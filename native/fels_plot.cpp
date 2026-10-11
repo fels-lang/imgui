@@ -296,6 +296,23 @@ FELS_API void fels_plot_pie(const char* const* labels, const double* values, int
     ImPlot::PlotPieChart(labels, values, count, x, y, radius, fmt, angle0, s);
 }
 
+static char g_pie_suffix[16];
+
+// A slice's value with one digit after the comma and the suffix of the pie.
+static int german_slice(double value, char* buff, int size, void* data) {
+    german_number(value, 1, data ? (const char*)data : "", buff, size);
+    return (int)strlen(buff);
+}
+
+// As fels_plot_pie, each slice's value written the German way with one digit after the comma
+// and `suffix`: "46,6 %".
+FELS_API void fels_plot_pie_german(const char* const* labels, const double* values, int count, double x, double y, double radius, const char* suffix, double angle0, int flags) {
+    snprintf(g_pie_suffix, sizeof g_pie_suffix, "%s", suffix);
+    ImPlotSpec s;
+    s.Flags = flags;
+    ImPlot::PlotPieChart(labels, values, count, x, y, radius, german_slice, g_pie_suffix, angle0, s);
+}
+
 FELS_API void fels_plot_heatmap(const char* label, const double* values, int rows, int cols, double lo, double hi, const char* fmt,
                                 double x0, double y0, double x1, double y1, int flags) {
     ImPlotSpec s;

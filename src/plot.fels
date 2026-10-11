@@ -254,6 +254,16 @@ pub pie :: fn(labels: []const []const u8, values: []const f64, x: f64, y: f64, r
     fels_plot_pie(l.ptrs[:].ptr, values.ptr, n as i32, x, y, radius, z(fmt, f[:]), angle0, flags);
 }
 
+// As `pie`, each slice's value written the German way with one digit after the comma and
+// `suffix` after it: "46,6 %".
+pub pie_german :: fn(labels: []const []const u8, values: []const f64, x: f64, y: f64, radius: f64, suffix: []const u8, angle0: f64, flags: i32) {
+    l: Labels = .{ .{}, .{}, 0usize };
+    n := l.take(labels);
+    if n > values.len { n = values.len; }
+    f: [64]u8 = .{};
+    fels_plot_pie_german(l.ptrs[:].ptr, values.ptr, n as i32, x, y, radius, z(suffix, f[:]), angle0, flags);
+}
+
 // `rows` by `cols` values (row by row) as coloured cells from `x0`, `y0` to `x1`, `y1`, the
 // colours from `lo` to `hi` (both 0: from the values); `fmt` writes each value in its cell.
 pub heatmap :: fn(label: []const u8, values: []const f64, rows: i32, cols: i32, lo: f64, hi: f64, fmt: []const u8, x0: f64, y0: f64, x1: f64, y1: f64, flags: i32) {
@@ -437,6 +447,8 @@ fels_plot_scatter :: fn(label: [*]const u8, xs: [*]const f64, ys: [*]const f64, 
 fels_plot_inf_lines :: fn(label: [*]const u8, values: [*]const f64, count: i32, color: Vec4, weight: f32, flags: i32);
 #extern("cimgui", "fels_plot_pie")
 fels_plot_pie :: fn(labels: [*]const usize, values: [*]const f64, count: i32, x: f64, y: f64, radius: f64, fmt: [*]const u8, angle0: f64, flags: i32);
+#extern("cimgui", "fels_plot_pie_german")
+fels_plot_pie_german :: fn(labels: [*]const usize, values: [*]const f64, count: i32, x: f64, y: f64, radius: f64, suffix: [*]const u8, angle0: f64, flags: i32);
 #extern("cimgui", "fels_plot_heatmap")
 fels_plot_heatmap :: fn(label: [*]const u8, values: [*]const f64, rows: i32, cols: i32, lo: f64, hi: f64, fmt: [*]const u8, x0: f64, y0: f64, x1: f64, y1: f64, flags: i32);
 #extern("cimgui", "fels_plot_text")
