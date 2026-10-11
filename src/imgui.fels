@@ -415,6 +415,22 @@ pub context_menu_begin :: fn(id: []const u8) -> bool {
 pub popup_close :: fn() { igCloseCurrentPopup(); }
 pub popup_end :: fn() { igEndPopup(); }
 
+// Tabs
+
+// A row of tabs; `tab_bar_end` it only when this is true.
+pub tab_bar_begin :: fn(id: []const u8) -> bool {
+    n: [256]u8 = .{};
+    return igBeginTabBar(c(id, n[:]), 0);
+}
+pub tab_bar_end :: fn() { igEndTabBar(); }
+
+// A tab of the bar; what is drawn while it is true is its page; `tab_item_end` it only then.
+pub tab_item_begin :: fn(label: []const u8) -> bool {
+    n: [256]u8 = .{};
+    return igBeginTabItem(c(label, n[:]), 0usize, 0);
+}
+pub tab_item_end :: fn() { igEndTabItem(); }
+
 // Tables
 
 // A table of `columns` columns; `table_end` it only when this is true.
@@ -843,6 +859,14 @@ igBeginPopupModal :: fn(name: [*]const u8, p_open: usize, flags: i32) -> bool;
 igCloseCurrentPopup :: fn();
 #extern("cimgui", "igEndPopup")
 igEndPopup :: fn();
+#extern("cimgui", "igBeginTabBar")
+igBeginTabBar :: fn(id: [*]const u8, flags: i32) -> bool;
+#extern("cimgui", "igEndTabBar")
+igEndTabBar :: fn();
+#extern("cimgui", "igBeginTabItem")
+igBeginTabItem :: fn(label: [*]const u8, open: usize, flags: i32) -> bool;
+#extern("cimgui", "igEndTabItem")
+igEndTabItem :: fn();
 #extern("cimgui", "igBeginPopupContextItem")
 igBeginPopupContextItem :: fn(id: [*]const u8, flags: i32) -> bool;
 #extern("cimgui", "igIsMouseDoubleClicked_Nil")

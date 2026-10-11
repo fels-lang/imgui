@@ -50,6 +50,7 @@ to them. A program with a window has no console; in `build.fels`: `app.windowed(
   `MOD_CTRL` and the like), `is_item_hovered`, `is_item_double_clicked`.
 - **Drawing:** `cursor_screen_pos`, `draw_rect` and `draw_line` draw into the current window,
   for bars and markers of your own.
+- **Tabs:** `tab_bar_begin`, `tab_item_begin`, `tab_item_end`, `tab_bar_end`.
 - **Menus and popups:** `main_menu_bar_begin`, `menu_begin`, `menu_item`, `menu_toggle`,
   `popup_open`, `popup_modal_begin`, `context_menu_begin` (a right click on the last item).
 - **Tables:** `table_begin` with `TABLE_*` flags (resizable, reorderable, hideable and sortable
