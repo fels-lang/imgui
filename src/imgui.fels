@@ -212,6 +212,20 @@ pub same_line :: fn() { igSameLine(0.0, -1.0); }
 pub separator :: fn() { igSeparator(); }
 pub dummy :: fn(size: Vec2) { igDummy(size); }
 pub avail :: fn() -> Vec2 { return igGetContentRegionAvail(); }
+
+// Where the next item goes, on the screen: the place to draw at.
+pub cursor_screen_pos :: fn() -> Vec2 { return igGetCursorScreenPos(); }
+
+// A filled rectangle from `min` to `max` (screen positions) in the current window, its corners
+// rounded by `rounding`. Draw, then `dummy` the size, so that the next item goes below.
+pub draw_rect :: fn(min: Vec2, max: Vec2, color: Vec4, rounding: f32) {
+    ImDrawList_AddRectFilled(igGetWindowDrawList(), min, max, igGetColorU32_Vec4(color), rounding, 0);
+}
+
+// A line from `from` to `to` (screen positions) in the current window.
+pub draw_line :: fn(from: Vec2, to: Vec2, color: Vec4, thickness: f32) {
+    ImDrawList_AddLine(igGetWindowDrawList(), from, to, igGetColorU32_Vec4(color), thickness);
+}
 pub frame_height :: fn() -> f32 { return igGetFrameHeight(); }
 pub cursor_x :: fn() -> f32 { return igGetCursorPosX(); }
 pub set_cursor_x :: fn(x: f32) { igSetCursorPosX(x); }
@@ -745,6 +759,16 @@ igSeparator :: fn();
 igDummy :: fn(size: Vec2);
 #extern("cimgui", "igGetContentRegionAvail")
 igGetContentRegionAvail :: fn() -> Vec2;
+#extern("cimgui", "igGetCursorScreenPos")
+igGetCursorScreenPos :: fn() -> Vec2;
+#extern("cimgui", "igGetWindowDrawList")
+igGetWindowDrawList :: fn() -> usize;
+#extern("cimgui", "igGetColorU32_Vec4")
+igGetColorU32_Vec4 :: fn(color: Vec4) -> u32;
+#extern("cimgui", "ImDrawList_AddRectFilled")
+ImDrawList_AddRectFilled :: fn(list: usize, min: Vec2, max: Vec2, color: u32, rounding: f32, flags: i32);
+#extern("cimgui", "ImDrawList_AddLine")
+ImDrawList_AddLine :: fn(list: usize, from: Vec2, to: Vec2, color: u32, thickness: f32);
 #extern("cimgui", "igGetFrameHeight")
 igGetFrameHeight :: fn() -> f32;
 #extern("cimgui", "igGetCursorPosX")
