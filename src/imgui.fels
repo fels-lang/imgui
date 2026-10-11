@@ -102,6 +102,39 @@ pub dock_window :: fn(name: []const u8, node: u32) {
     igDockBuilderDockWindow(c(name, n[:]), node);
 }
 
+// Layouts: lay out the dock space anew, for a first start or a layout preset.
+//
+//   imgui::layout_begin(dock);
+//   rest: u32 = 0u32;
+//   left := imgui::layout_split(dock, imgui::DIR_LEFT, 0.25, &rest);
+//   imgui::dock_window("Accounts", left);
+//   imgui::dock_window("Positions", rest);
+//   imgui::layout_end(dock);
+
+// Empty the dock node `node` (from `dock_space`) to lay it out anew, at the size of the window.
+pub layout_begin :: fn(node: u32) {
+    igDockBuilderRemoveNode(node);
+    id := igDockBuilderAddNode(node, DOCK_SPACE_NODE | PASSTHRU_CENTRAL_NODE);
+    igDockBuilderSetNodeSize(node, work_size());
+}
+
+// Split `node`: the part toward `dir` (DIR_*) gets `ratio` of it and is returned; the id of the
+// other part goes to `*rest`.
+pub layout_split :: fn(node: u32, dir: i32, ratio: f32, rest: *u32) -> u32 {
+    part: u32 = 0u32;
+    id := igDockBuilderSplitNode(node, dir, ratio, &part, rest);
+    return part;
+}
+
+pub layout_end :: fn(node: u32) { igDockBuilderFinish(node); }
+
+// The size of the main window without its menu bar.
+pub work_size :: fn() -> Vec2 {
+    vp := igGetMainViewport();
+    size: Vec2 = unsafe *core::ptr_from_int(*Vec2, vp + 40usize);
+    return size;
+}
+
 pub set_next_window_size :: fn(size: Vec2, cond: i32) { igSetNextWindowSize(size, cond); }
 pub set_window_focus :: fn(name: []const u8) {
     n: [256]u8 = .{};
@@ -337,6 +370,13 @@ pub NO_DOCKING :: 524288;
 
 // Dock space flags
 pub PASSTHRU_CENTRAL_NODE :: 8;
+pub DOCK_SPACE_NODE :: 1024;
+
+// Directions of `layout_split`
+pub DIR_LEFT :: 0;
+pub DIR_RIGHT :: 1;
+pub DIR_UP :: 2;
+pub DIR_DOWN :: 3;
 
 // Table flags
 pub TABLE_RESIZABLE :: 1;
@@ -511,6 +551,16 @@ igDockSpaceOverViewport :: fn(id: u32, viewport: usize, flags: i32, window_class
 igGetMainViewport :: fn() -> usize;
 #extern("cimgui", "igDockBuilderDockWindow")
 igDockBuilderDockWindow :: fn(name: [*]const u8, node: u32);
+#extern("cimgui", "igDockBuilderRemoveNode")
+igDockBuilderRemoveNode :: fn(node: u32);
+#extern("cimgui", "igDockBuilderAddNode")
+igDockBuilderAddNode :: fn(node: u32, flags: i32) -> u32;
+#extern("cimgui", "igDockBuilderSetNodeSize")
+igDockBuilderSetNodeSize :: fn(node: u32, size: Vec2);
+#extern("cimgui", "igDockBuilderSplitNode")
+igDockBuilderSplitNode :: fn(node: u32, dir: i32, ratio: f32, at_dir: *u32, opposite: *u32) -> u32;
+#extern("cimgui", "igDockBuilderFinish")
+igDockBuilderFinish :: fn(node: u32);
 #extern("cimgui", "igSetNextWindowSize")
 igSetNextWindowSize :: fn(size: Vec2, cond: i32);
 #extern("cimgui", "igSetWindowFocus_Str")

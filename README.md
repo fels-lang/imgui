@@ -40,6 +40,8 @@ to them. A program with a window has no console; in `build.fels`: `app.windowed(
   `set_borders`.
 - **Panels and layout:** `begin`, `begin_with`, `end`, `dock_space`, `dock_window`,
   `child_begin`, `same_line`, `separator`, `avail`, `text_size`, ...
+- **Layouts:** `layout_begin`, `layout_split` and `layout_end` lay out the dock space anew,
+  for a first start or a preset; `dock_window` puts a panel into a part.
 - **Widgets:** `text`, `text_colored`, `text_right` (numbers in a column), `button`,
   `checkbox`, `selectable`, `input_text`, `combo_begin`, `tooltip`, `pressed` (keys with
   `MOD_CTRL` and the like).
