@@ -444,10 +444,11 @@ pub popup_end :: fn() { igEndPopup(); }
 
 // Tabs
 
-// A row of tabs; `tab_bar_end` it only when this is true.
+// A row of tabs; `tab_bar_end` it only when this is true. The selected tab has a line of
+// COL_TAB_SELECTED_OVERLINE over it.
 pub tab_bar_begin :: fn(id: []const u8) -> bool {
     n: [256]u8 = .{};
-    return igBeginTabBar(c(id, n[:]), 0);
+    return igBeginTabBar(c(id, n[:]), TAB_BAR_DRAW_SELECTED_OVERLINE);
 }
 pub tab_bar_end :: fn() { igEndTabBar(); }
 
@@ -479,7 +480,6 @@ pub table_column_right :: fn(label: []const u8, flags: i32, width: f32) {
     l: [256]u8 = .{};
     fels_app_table_column(c(label, l[:]), flags, width, 1);
 }
-
 
 // Keep the first `rows` rows (the headers) and `cols` columns in view when scrolling.
 pub table_freeze :: fn(cols: i32, rows: i32) { igTableSetupScrollFreeze(cols, rows); }
@@ -580,6 +580,9 @@ pub SELECTABLE_ALLOW_DOUBLE_CLICK :: 4;
 pub INPUT_CHARS_DECIMAL :: 1;
 pub INPUT_ENTER_RETURNS_TRUE :: 64;
 pub INPUT_AUTO_SELECT_ALL :: 4096;
+
+// Tab bar flags
+pub TAB_BAR_DRAW_SELECTED_OVERLINE :: 64;
 
 // Conditions
 pub ALWAYS :: 1;
