@@ -164,6 +164,13 @@ pub axis_format :: fn(axis: i32, fmt: []const u8) {
     fels_plot_axis_format(axis, z(fmt, f[:]));
 }
 
+// The numbers of `axis` the German way, with as many digits after the comma as its step needs
+// and `suffix` after each: "40.000 €", "-0,25 %". Ticks go at round steps, as many as fit.
+pub axis_german :: fn(axis: i32, suffix: []const u8) {
+    f: [64]u8 = .{};
+    fels_plot_axis_german(axis, z(suffix, f[:]));
+}
+
 // The range `axis` shows: once (`ONCE`, the user may zoom then) or in every frame (`ALWAYS`).
 pub axis_limits :: fn(axis: i32, lo: f64, hi: f64, cond: i32) { fels_plot_axis_limits(axis, lo, hi, cond); }
 
@@ -395,6 +402,8 @@ fels_plot_axis_dates :: fn(axis: i32);
 fels_plot_axis_log :: fn(axis: i32);
 #extern("cimgui", "fels_plot_axis_format")
 fels_plot_axis_format :: fn(axis: i32, fmt: [*]const u8);
+#extern("cimgui", "fels_plot_axis_german")
+fels_plot_axis_german :: fn(axis: i32, suffix: [*]const u8);
 #extern("cimgui", "fels_plot_axis_limits")
 fels_plot_axis_limits :: fn(axis: i32, lo: f64, hi: f64, cond: i32);
 #extern("cimgui", "fels_plot_axis_ticks")

@@ -8,6 +8,7 @@
 #include "implot_internal.h"
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <math.h>
 
 #define FELS_API extern "C" __declspec(dllexport)
@@ -136,6 +137,86 @@ FELS_API void fels_plot_axis_dates(int axis) {
     ImPlotAxis& a = ImPlot::GetCurrentPlot()->Axes[axis];
     a.Locator = german_dates;
     a.Ticker.Levels = 1;
+}
+
+// A step of 1, 2, 2.5 or 5 times a power of ten, at least `raw`.
+static double nice_step(double raw) {
+    double e = pow(10.0, floor(log10(raw)));
+    double f = raw / e;
+    double n = f <= 1.0 ? 1.0 : f <= 2.0 ? 2.0 : f <= 2.5 ? 2.5 : f <= 5.0 ? 5.0 : 10.0;
+    return n * e;
+}
+
+// The digits after the comma that the multiples of `step` need (at most 6).
+static int decimals_for(double step) {
+    for (int d = 0; d < 6; d++) {
+        double scaled = step * pow(10.0, d);
+        if (fabs(scaled - round(scaled)) < 1e-6 * (scaled > 1.0 ? scaled : 1.0)) return d;
+    }
+    return 6;
+}
+
+// `v` the German way, with `decimals` digits after a comma, points between the thousands and
+// `suffix` after it: "40.000 €", "-0,25 %". No minus before a zero.
+static void german_number(double v, int decimals, const char* suffix, char* out, int size) {
+    char raw[64];
+    snprintf(raw, sizeof raw, "%.*f", decimals, v);
+    const char* p = raw;
+    bool negative = *p == '-';
+    if (negative) p++;
+    bool zero = true;
+    for (const char* q = p; *q; q++) if (*q >= '1' && *q <= '9') zero = false;
+    const char* point = strchr(p, '.');
+    int whole = point ? (int)(point - p) : (int)strlen(p);
+    char text[96];
+    int n = 0;
+    if (negative && !zero) text[n++] = '-';
+    for (int i = 0; i < whole && n < 80; i++) {
+        if (i > 0 && (whole - i) % 3 == 0) text[n++] = '.';
+        text[n++] = p[i];
+    }
+    if (point) {
+        text[n++] = ',';
+        for (const char* q = point + 1; *q && n < 94; q++) text[n++] = *q;
+    }
+    text[n] = 0;
+    snprintf(out, size, "%s%s", text, suffix);
+}
+
+// Ticks of a number axis at a round step, a label every 34 pixels up and down or every 100
+// across, all with the digits the step needs; `data` is the suffix of each label.
+static void german_numbers(ImPlotTicker& ticker, const ImPlotRange& range, float pixels, bool vertical, ImPlotFormatter, void* data) {
+    double lo = range.Min, hi = range.Max;
+    if (!(hi > lo)) return;
+    const char* suffix = data ? (const char*)data : "";
+    int room = (int)(pixels / (vertical ? 34.0f : 100.0f));
+    if (room < 2) room = 2;
+    double step = nice_step((hi - lo) / room);
+    int decimals = decimals_for(step);
+    char label[64];
+    for (double k = ceil(lo / step - 1e-9); k * step <= hi + step * 1e-9; k += 1.0) {
+        double at = k * step;
+        if (fabs(at) < step * 1e-9) at = 0.0;
+        german_number(at, decimals, suffix, label, sizeof label);
+        ticker.AddTick(at, true, 0, true, label);
+    }
+}
+
+// The value under the mouse, the German way with two digits.
+static int german_value(double value, char* buff, int size, void* data) {
+    german_number(value, 2, data ? (const char*)data : "", buff, size);
+    return (int)strlen(buff);
+}
+
+static char g_suffix[ImAxis_COUNT][16];
+
+// The axis writes its numbers the German way, `suffix` after each (" %", " €" or "").
+FELS_API void fels_plot_axis_german(int axis, const char* suffix) {
+    snprintf(g_suffix[axis], sizeof g_suffix[axis], "%s", suffix);
+    ImPlotAxis& a = ImPlot::GetCurrentPlot()->Axes[axis];
+    a.Locator = german_numbers;
+    a.Formatter = german_value;
+    a.FormatterData = g_suffix[axis];
 }
 
 FELS_API void fels_plot_axis_log(int axis) { ImPlot::SetupAxisScale(axis, ImPlotScale_Log10); }
