@@ -3,6 +3,7 @@
 // instead of an ImPlotSpec, a struct with defaults Fels would have to copy. Built into
 // cimgui.dll with Dear ImGui (see build.sh); fels_app.cpp makes the ImPlot context.
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
 #include "implot.h"
 #include "implot_internal.h"
@@ -352,6 +353,57 @@ FELS_API void fels_plot_pop_colormap(void) { ImPlot::PopColormap(1); }
 // A bar with the colours of `cmap` from `lo` to `hi`, as the legend of a heatmap.
 FELS_API void fels_plot_colormap_scale(const char* label, double lo, double hi, float width, float height, const char* fmt, int cmap) {
     ImPlot::ColormapScale(label, lo, hi, ImVec2(width, height), fmt, 0, cmap);
+}
+
+static char g_scale_suffix[16];
+
+// As fels_plot_colormap_scale, the numbers written the German way with `suffix` after each
+// (ImPlot's ColormapScale with german_numbers for its ticks).
+FELS_API void fels_plot_colormap_scale_german(const char* label, double lo, double hi, float width, float height, const char* suffix, int cmap) {
+    ImGuiContext& G = *GImGui;
+    ImGuiWindow* window = G.CurrentWindow;
+    if (window->SkipItems) return;
+    snprintf(g_scale_suffix, sizeof g_scale_suffix, "%s", suffix);
+    const ImGuiID id = window->GetID(label);
+    ImPlotContext& gp = *GImPlot;
+    if (cmap < 0) cmap = gp.Style.Colormap;
+    ImVec2 frame_size = ImGui::CalcItemSize(ImVec2(width, height), 0, gp.Style.PlotDefaultSize.y);
+    ImPlotRange range(ImMin(lo, hi), ImMax(lo, hi));
+    gp.CTicker.Reset();
+    german_numbers(gp.CTicker, range, frame_size.y, true, nullptr, g_scale_suffix);
+    const float txt_off = gp.Style.LabelPadding.x;
+    const float pad = txt_off + gp.CTicker.MaxSize.x;
+    float bar_w = 20;
+    if (frame_size.x == 0) {
+        frame_size.x = bar_w + pad + 2 * gp.Style.PlotPadding.x;
+    } else {
+        bar_w = frame_size.x - (pad + 2 * gp.Style.PlotPadding.x);
+        if (bar_w < gp.Style.MajorTickLen.y) bar_w = gp.Style.MajorTickLen.y;
+    }
+    ImDrawList& draw = *window->DrawList;
+    ImRect bb_frame(window->DC.CursorPos, window->DC.CursorPos + frame_size);
+    ImGui::ItemSize(bb_frame);
+    if (!ImGui::ItemAdd(bb_frame, id, &bb_frame)) return;
+    ImGui::RenderFrame(bb_frame.Min, bb_frame.Max, ImPlot::GetStyleColorU32(ImPlotCol_FrameBg), true, G.Style.FrameRounding);
+    ImRect bb_grad(bb_frame.Min + gp.Style.PlotPadding,
+                   bb_frame.Min + ImVec2(bar_w + gp.Style.PlotPadding.x, frame_size.y - gp.Style.PlotPadding.y));
+    ImGui::PushClipRect(bb_frame.Min, bb_frame.Max, true);
+    const ImU32 text = ImGui::GetColorU32(ImGuiCol_Text);
+    const bool reversed = lo > hi;
+    const float y_min = reversed ? bb_grad.Max.y : bb_grad.Min.y;
+    const float y_max = reversed ? bb_grad.Min.y : bb_grad.Max.y;
+    ImPlot::RenderColorBar(gp.ColormapData.GetKeys(cmap), gp.ColormapData.GetKeyCount(cmap), draw, bb_grad, true, true, !gp.ColormapData.IsQual(cmap));
+    for (int i = 0; i < gp.CTicker.TickCount(); ++i) {
+        const double at = gp.CTicker.Ticks[i].PlotPos;
+        const float y = ImRemap((float)at, (float)range.Max, (float)range.Min, y_min, y_max);
+        const float t = (float)((at - lo) / (hi - lo));
+        const ImU32 tick = ImPlot::CalcTextColor(gp.ColormapData.LerpTable(cmap, t));
+        if (y < bb_grad.Max.y - 2 && y > bb_grad.Min.y + 2)
+            draw.AddLine(ImVec2(bb_grad.Max.x - 1, y), ImVec2(bb_grad.Max.x - gp.Style.MajorTickLen.y, y), tick, gp.Style.MajorTickSize.y);
+        draw.AddText(ImVec2(bb_grad.Max.x + txt_off, y - gp.CTicker.Ticks[i].LabelSize.y * 0.5f), text, gp.CTicker.GetText(i));
+    }
+    draw.AddRect(bb_grad.Min, bb_grad.Max, ImPlot::GetStyleColorU32(ImPlotCol_PlotBorder));
+    ImGui::PopClipRect();
 }
 
 FELS_API void fels_plot_demo(bool* open) { ImPlot::ShowDemoWindow(open); }

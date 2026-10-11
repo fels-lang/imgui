@@ -336,6 +336,13 @@ pub colormap_scale :: fn(label: []const u8, lo: f64, hi: f64, width: f32, height
     fels_plot_colormap_scale(z(label, l[:]), lo, hi, width, height, z(fmt, f[:]), cmap);
 }
 
+// As `colormap_scale`, the numbers written the German way with `suffix` after each.
+pub colormap_scale_german :: fn(label: []const u8, lo: f64, hi: f64, width: f32, height: f32, suffix: []const u8, cmap: i32) {
+    l: [256]u8 = .{};
+    f: [64]u8 = .{};
+    fels_plot_colormap_scale_german(z(label, l[:]), lo, hi, width, height, z(suffix, f[:]), cmap);
+}
+
 // ImPlot's window that shows what it can.
 pub demo :: fn(open: *bool) { fels_plot_demo(open); }
 
@@ -452,5 +459,7 @@ fels_plot_push_colormap :: fn(cmap: i32);
 fels_plot_pop_colormap :: fn();
 #extern("cimgui", "fels_plot_colormap_scale")
 fels_plot_colormap_scale :: fn(label: [*]const u8, lo: f64, hi: f64, width: f32, height: f32, fmt: [*]const u8, cmap: i32);
+#extern("cimgui", "fels_plot_colormap_scale_german")
+fels_plot_colormap_scale_german :: fn(label: [*]const u8, lo: f64, hi: f64, width: f32, height: f32, suffix: [*]const u8, cmap: i32);
 #extern("cimgui", "fels_plot_demo")
 fels_plot_demo :: fn(open: *bool);
