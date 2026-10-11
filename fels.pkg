@@ -1,3 +1,3 @@
-#package imgui "0.3.7";
+#package imgui "0.3.8";
 #license "MIT";
 #description "Fels bindings to Dear ImGui (docking branch) with a ready window on Direct3D 11, for 64-bit Windows";
