@@ -6,6 +6,7 @@
 // Copyright (c) 2014-2026 Omar Cornut).
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "implot.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
@@ -317,4 +318,44 @@ FELS_API int fels_app_file_dialog(int save, const char* title, const char* filte
     int len = ::WideCharToMultiByte(CP_UTF8, 0, path, -1, out, out_len, nullptr, nullptr);
     if (len <= 0) return 0;
     return len - 1;
+}
+
+// Columns whose header text goes to the right of its cell, over numbers: bit n for column n of
+// the table being declared.
+static unsigned long long g_right_headers = 0;
+
+// Declare a column of the current table, its header at the right of the cell when `right`.
+FELS_API void fels_app_table_column(const char* label, int flags, float width, int right) {
+    ImGuiTable* table = ImGui::GetCurrentTable();
+    int n = table ? table->DeclColumnsCount : 0;
+    if (n == 0) g_right_headers = 0;
+    if (right && n < 64) g_right_headers |= 1ull << n;
+    ImGui::TableSetupColumn(label, flags, width, 0);
+}
+
+// The row of headers, as TableHeadersRow draws it, with the headers of the columns declared
+// `right` at the right of their cells (left of the sort arrow), where the numbers below end.
+FELS_API void fels_app_table_headers(void) {
+    ImGuiContext& g = *GImGui;
+    ImGuiTable* table = g.CurrentTable;
+    if (!table) return;
+    if (!table->IsLayoutLocked) ImGui::TableUpdateLayout(table);
+    ImGui::TableNextRow(ImGuiTableRowFlags_Headers, ImGui::TableGetHeaderRowHeight());
+    if (table->HostSkipItems) return;
+    const int count = ImGui::TableGetColumnCount();
+    for (int n = 0; n < count; n++) {
+        if (!ImGui::TableSetColumnIndex(n) && table->LastHeldHeaderColumn != n) continue;
+        const char* name = (ImGui::TableGetColumnFlags(n) & ImGuiTableColumnFlags_NoHeaderLabel) ? "" : ImGui::TableGetColumnName(n);
+        if (n < 64 && ((g_right_headers >> n) & 1ull)) {
+            float w = ImGui::CalcTextSize(name, nullptr, true).x;
+            float arrow = 0.0f;
+            if ((table->Flags & ImGuiTableFlags_Sortable) && table->Columns[n].SortOrder != -1)
+                arrow = ImTrunc(g.FontSize * 0.65f + g.Style.FramePadding.x);
+            float room = ImGui::GetContentRegionAvail().x - arrow;
+            if (room > w) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + room - w);
+        }
+        ImGui::PushID(n);
+        ImGui::TableHeader(name);
+        ImGui::PopID();
+    }
 }

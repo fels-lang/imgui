@@ -444,13 +444,24 @@ pub table_end :: fn() { igEndTable(); }
 // Declare a column: its header, its flags (COLUMN_*), and a width (0 for automatic).
 pub table_column :: fn(label: []const u8, flags: i32, width: f32) {
     l: [256]u8 = .{};
-    igTableSetupColumn(c(label, l[:]), flags, width, 0u32);
+    fels_app_table_column(c(label, l[:]), flags, width, 0);
 }
+
+// Declare a column whose header goes to the right of the cell, where right-aligned numbers end.
+pub table_column_right :: fn(label: []const u8, flags: i32, width: f32) {
+    l: [256]u8 = .{};
+    fels_app_table_column(c(label, l[:]), flags, width, 1);
+}
+
 
 // Keep the first `rows` rows (the headers) and `cols` columns in view when scrolling.
 pub table_freeze :: fn(cols: i32, rows: i32) { igTableSetupScrollFreeze(cols, rows); }
-pub table_headers :: fn() { igTableHeadersRow(); }
+pub table_headers :: fn() { fels_app_table_headers(); }
 pub table_row :: fn() { igTableNextRow(0, 0.0); }
+
+// Colour the background of the current row with `color` (over the stripes of TABLE_ROW_BG): a
+// row of sums.
+pub table_row_color :: fn(color: Vec4) { igTableSetBgColor(2, igGetColorU32_Vec4(color), -1); }
 pub table_next_column :: fn() -> bool { return igTableNextColumn(); }
 pub table_column_index :: fn(column: i32) -> bool { return igTableSetColumnIndex(column); }
 
@@ -736,6 +747,10 @@ fels_app_set_rounding :: fn(window: f32, frame: f32, tab: f32, scrollbar: f32);
 fels_app_set_spacing :: fn(frame_x: f32, frame_y: f32, item_x: f32, item_y: f32, cell_x: f32, cell_y: f32);
 #extern("cimgui", "fels_app_set_borders")
 fels_app_set_borders :: fn(window: f32, frame: f32, tab: f32);
+#extern("cimgui", "fels_app_table_column")
+fels_app_table_column :: fn(label: [*]const u8, flags: i32, width: f32, right: i32);
+#extern("cimgui", "fels_app_table_headers")
+fels_app_table_headers :: fn();
 
 #extern("cimgui", "igBegin")
 igBegin :: fn(name: [*]const u8, p_open: usize, flags: i32) -> bool;
@@ -791,6 +806,8 @@ igGetFrameHeight :: fn() -> f32;
 igGetCursorPosX :: fn() -> f32;
 #extern("cimgui", "igSetCursorPosX")
 igSetCursorPosX :: fn(x: f32);
+#extern("cimgui", "igTableSetBgColor")
+igTableSetBgColor :: fn(target: i32, color: u32, column: i32);
 #extern("cimgui", "igSetNextItemWidth")
 igSetNextItemWidth :: fn(w: f32);
 #extern("cimgui", "igPushID_Int")
