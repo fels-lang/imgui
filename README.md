@@ -19,7 +19,7 @@ the docking branch, through [cimgui](https://github.com/cimgui/cimgui).
 ## Use it
 
 ```
-fels add imgui github.com/<you>/imgui
+fels add imgui github.com/fels-lang/imgui
 ```
 
 ```fels
