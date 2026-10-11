@@ -77,6 +77,14 @@ pub set_spacing :: fn(frame_x: f32, frame_y: f32, item_x: f32, item_y: f32, cell
 }
 pub set_borders :: fn(window: f32, frame: f32, tab: f32) { fels_app_set_borders(window, frame, tab); }
 
+// The title bar of the window: dark or light buttons and text, and the color of the bar (on
+// Windows 11), to go with the colors of the panels.
+pub set_title_bar :: fn(dark: bool, color: Vec4) {
+    d: i32 = 0;
+    if dark { d = 1; }
+    fels_app_set_title_bar(d, color.x, color.y, color.z);
+}
+
 // Windows and layout
 
 // A window (a panel); `end` it whether this is true or not.
@@ -534,6 +542,8 @@ fels_app_dpi_scale :: fn() -> f32;
 fels_app_load_font :: fn(path: [*]const u8, size: f32) -> i32;
 #extern("cimgui", "fels_app_set_color")
 fels_app_set_color :: fn(idx: i32, r: f32, g: f32, b: f32, a: f32);
+#extern("cimgui", "fels_app_set_title_bar")
+fels_app_set_title_bar :: fn(dark: i32, r: f32, g: f32, b: f32);
 #extern("cimgui", "fels_app_set_rounding")
 fels_app_set_rounding :: fn(window: f32, frame: f32, tab: f32, scrollbar: f32);
 #extern("cimgui", "fels_app_set_spacing")

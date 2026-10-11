@@ -10,6 +10,7 @@
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
 #include <windows.h>
+#include <dwmapi.h>
 #include <string.h>
 
 #define FELS_API extern "C" __declspec(dllexport)
@@ -261,4 +262,14 @@ FELS_API void fels_app_set_borders(float window, float frame, float tab) {
     s.PopupBorderSize = window;
     s.FrameBorderSize = frame;
     s.TabBorderSize = tab;
+}
+
+// The title bar of the window: dark (1) or light (0) buttons and text, and the color of the bar.
+// Windows 10 knows only the first; there the color is left as it is.
+FELS_API void fels_app_set_title_bar(int dark, float r, float g, float b) {
+    if (!g_hwnd) return;
+    BOOL value = dark ? TRUE : FALSE;
+    ::DwmSetWindowAttribute(g_hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &value, sizeof(value));
+    COLORREF color = RGB((int)(r * 255.0f + 0.5f), (int)(g * 255.0f + 0.5f), (int)(b * 255.0f + 0.5f));
+    ::DwmSetWindowAttribute(g_hwnd, 35 /* DWMWA_CAPTION_COLOR */, &color, sizeof(color));
 }
