@@ -229,6 +229,33 @@ pub draw_line :: fn(from: Vec2, to: Vec2, color: Vec4, thickness: f32) {
 pub frame_height :: fn() -> f32 { return igGetFrameHeight(); }
 pub cursor_x :: fn() -> f32 { return igGetCursorPosX(); }
 pub set_cursor_x :: fn(x: f32) { igSetCursorPosX(x); }
+pub cursor_y :: fn() -> f32 { return igGetCursorPosY(); }
+pub set_cursor_y :: fn(y: f32) { igSetCursorPosY(y); }
+
+// Move the text that comes next down to where the text of a field or button on the same line
+// sits: a label before a field.
+pub align_text_to_frame :: fn() { igAlignTextToFramePadding(); }
+
+// A little room between the last item and the next, as much as between two lines.
+pub spacing :: fn() { igSpacing(); }
+
+// The width of a button with `label`: its text and the padding on both sides.
+pub button_width :: fn(label: []const u8) -> f32 {
+    l: [256]u8 = .{};
+    return fels_app_button_width(c(label, l[:]));
+}
+
+// The room between two items on a line.
+pub item_spacing_x :: fn() -> f32 { return fels_app_item_spacing_x(); }
+
+// Write the text that comes next `size` pixels high (before the font scale), until `pop_font`:
+// a large number over a small label.
+pub push_font_size :: fn(size: f32) { igPushFont(0usize, size); }
+pub pop_font :: fn() { igPopFont(); }
+
+// Use `color` for the style colour `idx` (COL_*) until `pop_color`.
+pub push_color :: fn(idx: i32, color: Vec4) { igPushStyleColor_Vec4(idx, color); }
+pub pop_color :: fn(count: i32) { igPopStyleColor(count); }
 pub set_next_item_width :: fn(w: f32) { igSetNextItemWidth(w); }
 pub push_id :: fn(id: i32) { igPushID_Int(id); }
 pub pop_id :: fn() { igPopID(); }
@@ -747,6 +774,10 @@ fels_app_set_rounding :: fn(window: f32, frame: f32, tab: f32, scrollbar: f32);
 fels_app_set_spacing :: fn(frame_x: f32, frame_y: f32, item_x: f32, item_y: f32, cell_x: f32, cell_y: f32);
 #extern("cimgui", "fels_app_set_borders")
 fels_app_set_borders :: fn(window: f32, frame: f32, tab: f32);
+#extern("cimgui", "fels_app_button_width")
+fels_app_button_width :: fn(label: [*]const u8) -> f32;
+#extern("cimgui", "fels_app_item_spacing_x")
+fels_app_item_spacing_x :: fn() -> f32;
 #extern("cimgui", "fels_app_table_column")
 fels_app_table_column :: fn(label: [*]const u8, flags: i32, width: f32, right: i32);
 #extern("cimgui", "fels_app_table_headers")
@@ -806,6 +837,18 @@ igGetFrameHeight :: fn() -> f32;
 igGetCursorPosX :: fn() -> f32;
 #extern("cimgui", "igSetCursorPosX")
 igSetCursorPosX :: fn(x: f32);
+#extern("cimgui", "igGetCursorPosY")
+igGetCursorPosY :: fn() -> f32;
+#extern("cimgui", "igSetCursorPosY")
+igSetCursorPosY :: fn(y: f32);
+#extern("cimgui", "igPushFont")
+igPushFont :: fn(font: usize, size: f32);
+#extern("cimgui", "igPopFont")
+igPopFont :: fn();
+#extern("cimgui", "igAlignTextToFramePadding")
+igAlignTextToFramePadding :: fn();
+#extern("cimgui", "igSpacing")
+igSpacing :: fn();
 #extern("cimgui", "igTableSetBgColor")
 igTableSetBgColor :: fn(target: i32, color: u32, column: i32);
 #extern("cimgui", "igSetNextItemWidth")

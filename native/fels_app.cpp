@@ -359,3 +359,11 @@ FELS_API void fels_app_table_headers(void) {
         ImGui::PopID();
     }
 }
+
+// The width of a button with `label`: its text and the frame padding on both sides.
+FELS_API float fels_app_button_width(const char* label) {
+    return ImGui::CalcTextSize(label, nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+}
+
+// The room between two items on a line.
+FELS_API float fels_app_item_spacing_x(void) { return ImGui::GetStyle().ItemSpacing.x; }
