@@ -1,15 +1,16 @@
 #import std.build.{ Build };
 
 build :: fn(b: Build) {
-    // What the users of this package link with: the folder with the C library, and its DLL,
-    // copied next to their programs. Uncomment the lines once lib/ holds your library.
+    // What the users of this package link with: the folder with cimgui.lib, and the DLL,
+    // copied next to their programs.
     b.provide_lib_path("lib");
-    // b.provide_runtime_file("lib/imgui.dll");
+    b.provide_runtime_file("lib/cimgui.dll");
 
     b.out_root("bin");
     demo := b.executable("demo", "examples/demo.fels");
     demo.lib_path("lib");
-    // demo.runtime_file("lib/imgui.dll");
+    demo.runtime_file("lib/cimgui.dll");
+    demo.windowed();
     b.run_step("run", demo);
     b.default(demo);
 }

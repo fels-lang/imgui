@@ -1,9 +1,64 @@
-#import std.io;
+// A window with a menu, panels that dock, a table and Dear ImGui's own demo.
 #import imgui;
+#import imgui.{ Vec4 };
 
 main :: fn() -> i32 {
-    io::print("seconds since boot: ");
-    io::print_u64(imgui::seconds_since_boot());
-    io::println("");
+    if !imgui::open("Fels + Dear ImGui", 1280, 800, imgui::DOCKING | imgui::KEYBOARD, "demo.ini") { return 1; }
+    show_demo := false;
+    clicks: i32 = 0;
+    green: Vec4 = .{ 0.30, 0.75, 0.45, 1.0 };
+    red: Vec4 = .{ 0.90, 0.35, 0.35, 1.0 };
+    while imgui::begin_frame() {
+        if imgui::main_menu_bar_begin() {
+            if imgui::menu_begin("File") {
+                if imgui::menu_item("Quit", "Alt+F4", true) { imgui::quit(); }
+                imgui::menu_end();
+            }
+            if imgui::menu_begin("View") {
+                ok := imgui::menu_toggle("Dear ImGui demo", &show_demo);
+                imgui::menu_end();
+            }
+            imgui::main_menu_bar_end();
+        }
+        dock := imgui::dock_space();
+
+        if imgui::begin("Hello") {
+            imgui::text("Hello from Fels.");
+            if imgui::button("Click") { clicks += 1; }
+            imgui::same_line();
+            if clicks > 0 { imgui::text("clicked"); }
+        }
+        imgui::end();
+
+        if imgui::begin("Positions") {
+            flags := imgui::TABLE_RESIZABLE | imgui::TABLE_REORDERABLE | imgui::TABLE_HIDEABLE | imgui::TABLE_ROW_BG | imgui::TABLE_BORDERS_INNER_V;
+            if imgui::table_begin("positions", 3, flags) {
+                imgui::table_column("Security", imgui::COLUMN_WIDTH_STRETCH, 0.0);
+                imgui::table_column("Value", imgui::COLUMN_WIDTH_FIXED, 0.0);
+                imgui::table_column("Gain", imgui::COLUMN_WIDTH_FIXED, 0.0);
+                imgui::table_headers();
+                imgui::table_row();
+                ok := imgui::table_next_column();
+                imgui::text("MSCI World");
+                ok = imgui::table_next_column();
+                imgui::text_right("18.225,00");
+                ok = imgui::table_next_column();
+                imgui::text_right_colored(green, "+1.568,60");
+                imgui::table_row();
+                ok = imgui::table_next_column();
+                imgui::text("Emerging Markets");
+                ok = imgui::table_next_column();
+                imgui::text_right("5.010,00");
+                ok = imgui::table_next_column();
+                imgui::text_right_colored(red, "-12,40");
+                imgui::table_end();
+            }
+        }
+        imgui::end();
+
+        if show_demo { imgui::show_demo(&show_demo); }
+        imgui::end_frame(0.10, 0.11, 0.12);
+    }
+    imgui::close();
     return 0;
 }
