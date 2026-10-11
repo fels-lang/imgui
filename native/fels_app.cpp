@@ -282,3 +282,6 @@ FELS_API int fels_app_layout_changed(void) {
     io.WantSaveIniSettings = false;
     return 1;
 }
+
+// Scale every text: 1 for the size the font was loaded with.
+FELS_API void fels_app_set_font_scale(float scale) { ImGui::GetStyle().FontScaleMain = scale; }
