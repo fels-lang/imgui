@@ -13,4 +13,10 @@ build :: fn(b: Build) {
     demo.windowed();
     b.run_step("run", demo);
     b.default(demo);
+
+    plots := b.executable("plots", "examples/plots.fels");
+    plots.lib_path("lib");
+    plots.runtime_file("lib/cimgui.dll");
+    plots.windowed();
+    b.run_step("run-plots", plots);
 }
