@@ -338,6 +338,9 @@ pub combo_end :: fn() { igEndCombo(); }
 
 pub is_item_hovered :: fn() -> bool { return igIsItemHovered(0); }
 
+// Whether the last item was double-clicked (with the left button) in this frame.
+pub is_item_double_clicked :: fn() -> bool { return igIsItemHovered(0) && igIsMouseDoubleClicked_Nil(0); }
+
 // A tooltip with `t` over the last item.
 pub tooltip :: fn(t: []const u8) {
     if igBeginTooltip() {
@@ -389,6 +392,11 @@ pub popup_open :: fn(id: []const u8) {
 pub popup_modal_begin :: fn(name: []const u8) -> bool {
     n: [256]u8 = .{};
     return igBeginPopupModal(c(name, n[:]), 0usize, ALWAYS_AUTO_RESIZE);
+}
+// A menu that a right click on the last item opens; `popup_end` it only when this is true.
+pub context_menu_begin :: fn(id: []const u8) -> bool {
+    n: [256]u8 = .{};
+    return igBeginPopupContextItem(c(id, n[:]), POPUP_MOUSE_RIGHT);
 }
 pub popup_close :: fn() { igCloseCurrentPopup(); }
 pub popup_end :: fn() { igEndPopup(); }
@@ -451,6 +459,9 @@ pub ALWAYS_AUTO_RESIZE :: 64;
 pub NO_SAVED_SETTINGS :: 256;
 pub MENU_BAR :: 1024;
 pub NO_DOCKING :: 524288;
+
+// Popup flags
+pub POPUP_MOUSE_RIGHT :: 8;
 
 // Dock space flags
 pub PASSTHRU_CENTRAL_NODE :: 8;
@@ -808,6 +819,10 @@ igBeginPopupModal :: fn(name: [*]const u8, p_open: usize, flags: i32) -> bool;
 igCloseCurrentPopup :: fn();
 #extern("cimgui", "igEndPopup")
 igEndPopup :: fn();
+#extern("cimgui", "igBeginPopupContextItem")
+igBeginPopupContextItem :: fn(id: [*]const u8, flags: i32) -> bool;
+#extern("cimgui", "igIsMouseDoubleClicked_Nil")
+igIsMouseDoubleClicked_Nil :: fn(button: i32) -> bool;
 #extern("cimgui", "igBeginTable")
 igBeginTable :: fn(id: [*]const u8, columns: i32, flags: i32, outer_size: Vec2, inner_width: f32) -> bool;
 #extern("cimgui", "igEndTable")
