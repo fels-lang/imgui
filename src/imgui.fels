@@ -1,33 +1,617 @@
-// imgui: Fels bindings to a C library.
+// imgui: Fels bindings to Dear ImGui (docking branch), with a ready window on Direct3D 11.
 //
-// A binding names the library and the C function, and gives its Fels type:
+//   if !imgui::open("Notes", 1280, 800, imgui::DOCKING | imgui::KEYBOARD, "notes.ini") { return 1; }
+//   while imgui::begin_frame() {
+//       if imgui::begin("Hello") { imgui::text("Hello from Fels"); }
+//       imgui::end();
+//       imgui::end_frame(0.1, 0.1, 0.12);
+//   }
+//   imgui::close();
 //
-//     #extern("imgui", "imgui_init")
-//     pub init :: fn(flags: u32) -> i32;
-//
-// That links imgui.lib from lib/ (see lib/README.md). The two bindings below call
-// kernel32, which every Windows program links, so the package builds and its tests run
-// before your library is there. Replace them with your library's functions.
+// Labels and other texts given to Dear ImGui are copied into a short C string (255 bytes); a
+// longer one is cut. Text drawn with `text` has no such limit. Dear ImGui is immediate: every
+// frame draws the whole UI again, and a widget answers in the same call (`button` is true in
+// the frame it was clicked).
 
-#extern("kernel32", "GetTickCount64")
-pub ticks_ms :: fn() -> u64;
+pub Vec2 :: struct { x: f32, y: f32 }
+pub Vec4 :: struct { x: f32, y: f32, z: f32, w: f32 }
 
-#extern("kernel32", "GetCurrentProcessId")
-pub process_id :: fn() -> u32;
-
-// A Fels function over a binding: the place for nicer types and checks.
-pub seconds_since_boot :: fn() -> u64 {
-    return ticks_ms() / 1000u64;
+// One column a table is sorted by (`table_sort_specs`).
+pub ColumnSort :: struct {
+    user_id: u32,
+    index: i16,      // the column
+    order: i16,      // 0 for the first sort key, 1 for the second
+    direction: u8,   // ASCENDING or DESCENDING
 }
 
-#test
-ticks_go_forward :: fn(t: *Test) {
-    a := ticks_ms();
-    b := ticks_ms();
-    t.expect(b >= a);
+pub SortSpecs :: struct {
+    specs: usize,    // *ColumnSort
+    count: i32,
+    dirty: bool,     // the sort changed: sort the rows again and call `table_sorted`
 }
 
-#test
-has_a_process_id :: fn(t: *Test) {
-    t.expect(process_id() != 0u32);
+// The window
+
+// Flags of `open`.
+pub DOCKING :: 1;    // panels dock into each other and into the window
+pub VIEWPORTS :: 2;  // panels can leave the main window
+pub KEYBOARD :: 4;   // the keyboard moves between widgets
+
+// Open the main window, `width` x `height` at 96 dpi. `ini_path` is where the layout of the
+// panels is kept between runs; empty keeps none.
+pub open :: fn(title: []const u8, width: i32, height: i32, flags: i32, ini_path: []const u8) -> bool {
+    t: [256]u8 = .{};
+    ini: [256]u8 = .{};
+    if ini_path.len == 0 { return fels_app_open(c(title, t[:]), width, height, flags, 0usize) == 1; }
+    path := c(ini_path, ini[:]);
+    return fels_app_open(c(title, t[:]), width, height, flags, unsafe path as usize) == 1;
 }
+
+// Begin a frame; false when the window was closed (then `close`).
+pub begin_frame :: fn() -> bool { return fels_app_begin_frame() == 1; }
+
+// Draw the frame on the background r, g, b (0 to 1).
+pub end_frame :: fn(r: f32, g: f32, b: f32) { fels_app_end_frame(r, g, b); }
+
+pub close :: fn() { fels_app_close(); }
+
+// Ask the window to close, as its close button does.
+pub quit :: fn() { fels_app_quit(); }
+
+// The scale of the main monitor: 1 at 96 dpi.
+pub dpi_scale :: fn() -> f32 { return fels_app_dpi_scale(); }
+
+// Load a TrueType font file as the default font, `size` pixels at 96 dpi. Before the first
+// frame.
+pub load_font :: fn(path: []const u8, size: f32) -> bool {
+    p: [256]u8 = .{};
+    return fels_app_load_font(c(path, p[:]), size) == 1;
+}
+
+// The style
+
+pub set_color :: fn(idx: i32, color: Vec4) { fels_app_set_color(idx, color.x, color.y, color.z, color.w); }
+pub set_rounding :: fn(window: f32, frame: f32, tab: f32, scrollbar: f32) { fels_app_set_rounding(window, frame, tab, scrollbar); }
+pub set_spacing :: fn(frame_x: f32, frame_y: f32, item_x: f32, item_y: f32, cell_x: f32, cell_y: f32) {
+    fels_app_set_spacing(frame_x, frame_y, item_x, item_y, cell_x, cell_y);
+}
+pub set_borders :: fn(window: f32, frame: f32, tab: f32) { fels_app_set_borders(window, frame, tab); }
+
+// Windows and layout
+
+// A window (a panel); `end` it whether this is true or not.
+pub begin :: fn(name: []const u8) -> bool {
+    n: [256]u8 = .{};
+    return igBegin(c(name, n[:]), 0usize, 0);
+}
+
+// A window with a close button that sets `*open` false, and window flags.
+pub begin_with :: fn(name: []const u8, open: *bool, flags: i32) -> bool {
+    n: [256]u8 = .{};
+    return igBegin(c(name, n[:]), unsafe open as usize, flags);
+}
+
+pub end :: fn() { igEnd(); }
+
+// The dock space over the whole main window, under its menu bar; its id.
+pub dock_space :: fn() -> u32 { return igDockSpaceOverViewport(0u32, igGetMainViewport(), PASSTHRU_CENTRAL_NODE, 0usize); }
+
+// Put the window `name` into the dock node `node` (from `dock_space`) before it first shows.
+pub dock_window :: fn(name: []const u8, node: u32) {
+    n: [256]u8 = .{};
+    igDockBuilderDockWindow(c(name, n[:]), node);
+}
+
+pub set_next_window_size :: fn(size: Vec2, cond: i32) { igSetNextWindowSize(size, cond); }
+pub set_window_focus :: fn(name: []const u8) {
+    n: [256]u8 = .{};
+    igSetWindowFocus_Str(c(name, n[:]));
+}
+
+pub child_begin :: fn(id: []const u8, size: Vec2, border: bool) -> bool {
+    n: [256]u8 = .{};
+    flags: i32 = 0;
+    if border { flags = 1; }
+    return igBeginChild_Str(c(id, n[:]), size, flags, 0);
+}
+pub child_end :: fn() { igEndChild(); }
+
+pub same_line :: fn() { igSameLine(0.0, -1.0); }
+pub separator :: fn() { igSeparator(); }
+pub dummy :: fn(size: Vec2) { igDummy(size); }
+pub avail :: fn() -> Vec2 { return igGetContentRegionAvail(); }
+pub frame_height :: fn() -> f32 { return igGetFrameHeight(); }
+pub cursor_x :: fn() -> f32 { return igGetCursorPosX(); }
+pub set_cursor_x :: fn(x: f32) { igSetCursorPosX(x); }
+pub set_next_item_width :: fn(w: f32) { igSetNextItemWidth(w); }
+pub push_id :: fn(id: i32) { igPushID_Int(id); }
+pub pop_id :: fn() { igPopID(); }
+pub begin_disabled :: fn(disabled: bool) { igBeginDisabled(disabled); }
+pub end_disabled :: fn() { igEndDisabled(); }
+
+// The size `t` takes in the current font.
+pub text_size :: fn(t: []const u8) -> Vec2 {
+    if t.len == 0 {
+        none: Vec2 = .{ 0.0, 0.0 };
+        return none;
+    }
+    end_at: usize = unsafe (t.ptr as usize) + t.len;
+    return igCalcTextSize(t.ptr, end_at, false, -1.0);
+}
+
+// Widgets
+
+// `t` as it is, any length.
+pub text :: fn(t: []const u8) {
+    if t.len == 0 {
+        igTextUnformatted("".ptr, 0usize);
+        return;
+    }
+    end_at: usize = unsafe (t.ptr as usize) + t.len;
+    igTextUnformatted(t.ptr, end_at);
+}
+
+// `t` in `color`.
+pub text_colored :: fn(color: Vec4, t: []const u8) {
+    igPushStyleColor_Vec4(COL_TEXT, color);
+    text(t);
+    igPopStyleColor(1);
+}
+
+// `t` right-aligned in the space that is left on the line (a number in a table cell).
+pub text_right :: fn(t: []const u8) {
+    w := text_size(t).x;
+    room := avail().x;
+    if room > w { igSetCursorPosX(igGetCursorPosX() + room - w); }
+    text(t);
+}
+
+// `t` right-aligned, in `color`.
+pub text_right_colored :: fn(color: Vec4, t: []const u8) {
+    igPushStyleColor_Vec4(COL_TEXT, color);
+    text_right(t);
+    igPopStyleColor(1);
+}
+
+pub button :: fn(label: []const u8) -> bool {
+    l: [256]u8 = .{};
+    size: Vec2 = .{ 0.0, 0.0 };
+    return igButton(c(label, l[:]), size);
+}
+
+pub checkbox :: fn(label: []const u8, value: *bool) -> bool {
+    l: [256]u8 = .{};
+    return igCheckbox(c(label, l[:]), value);
+}
+
+// A row that can be selected; with `span_all`, it is as wide as the table row.
+pub selectable :: fn(label: []const u8, selected: bool, span_all: bool) -> bool {
+    l: [256]u8 = .{};
+    size: Vec2 = .{ 0.0, 0.0 };
+    flags: i32 = 0;
+    if span_all { flags = SELECTABLE_SPAN_ALL_COLUMNS; }
+    return igSelectable_Bool(c(label, l[:]), selected, flags, size);
+}
+
+// A text field over `buf`, which holds a C string (the text and a NUL). True when it changed
+// (or, with INPUT_ENTER_RETURNS_TRUE, when Enter was pressed).
+pub input_text :: fn(label: []const u8, buf: []u8, flags: i32) -> bool {
+    l: [256]u8 = .{};
+    return igInputText(c(label, l[:]), buf.ptr, buf.len, flags, 0usize, 0usize);
+}
+
+// The text of a field's buffer, up to its NUL.
+pub buffer_text :: fn(buf: []const u8) -> []const u8 {
+    n: usize = 0usize;
+    while n < buf.len && buf[n] != 0u8 { n += 1usize; }
+    return buf[0usize..n];
+}
+
+// Put `t` into a field's buffer, cut to fit, with its NUL.
+pub set_buffer :: fn(buf: []u8, t: []const u8) {
+    gone := c(t, buf);
+}
+
+pub combo_begin :: fn(label: []const u8, preview: []const u8) -> bool {
+    l: [256]u8 = .{};
+    p: [256]u8 = .{};
+    return igBeginCombo(c(label, l[:]), c(preview, p[:]), 0);
+}
+pub combo_end :: fn() { igEndCombo(); }
+
+pub is_item_hovered :: fn() -> bool { return igIsItemHovered(0); }
+
+// A tooltip with `t` over the last item.
+pub tooltip :: fn(t: []const u8) {
+    if igBeginTooltip() {
+        text(t);
+        igEndTooltip();
+    }
+}
+
+// Whether the keys `chord` (a key with MOD_CTRL and the like) were pressed this frame.
+pub pressed :: fn(chord: i32) -> bool { return igIsKeyChordPressed_Nil(chord); }
+
+pub set_keyboard_focus_here :: fn() { igSetKeyboardFocusHere(0); }
+pub set_item_default_focus :: fn() { igSetItemDefaultFocus(); }
+
+pub show_demo :: fn(open: *bool) { igShowDemoWindow(open); }
+
+// Menus
+
+pub main_menu_bar_begin :: fn() -> bool { return igBeginMainMenuBar(); }
+pub main_menu_bar_end :: fn() { igEndMainMenuBar(); }
+
+pub menu_begin :: fn(label: []const u8) -> bool {
+    l: [256]u8 = .{};
+    return igBeginMenu(c(label, l[:]), true);
+}
+pub menu_end :: fn() { igEndMenu(); }
+
+// A menu entry with a key shown beside it ("Ctrl+N", or empty); true when chosen.
+pub menu_item :: fn(label: []const u8, shortcut: []const u8, enabled: bool) -> bool {
+    l: [256]u8 = .{};
+    s: [64]u8 = .{};
+    return igMenuItem_Bool(c(label, l[:]), c(shortcut, s[:]), false, enabled);
+}
+
+// A menu entry that switches `*on`.
+pub menu_toggle :: fn(label: []const u8, on: *bool) -> bool {
+    l: [256]u8 = .{};
+    return igMenuItem_BoolPtr(c(label, l[:]), "".ptr, on, true);
+}
+
+// Popups
+
+pub popup_open :: fn(id: []const u8) {
+    n: [256]u8 = .{};
+    igOpenPopup_Str(c(id, n[:]), 0);
+}
+
+// A modal popup; `popup_end` it only when this is true.
+pub popup_modal_begin :: fn(name: []const u8) -> bool {
+    n: [256]u8 = .{};
+    return igBeginPopupModal(c(name, n[:]), 0usize, ALWAYS_AUTO_RESIZE);
+}
+pub popup_close :: fn() { igCloseCurrentPopup(); }
+pub popup_end :: fn() { igEndPopup(); }
+
+// Tables
+
+// A table of `columns` columns; `table_end` it only when this is true.
+pub table_begin :: fn(id: []const u8, columns: i32, flags: i32) -> bool {
+    n: [256]u8 = .{};
+    size: Vec2 = .{ 0.0, 0.0 };
+    return igBeginTable(c(id, n[:]), columns, flags, size, 0.0);
+}
+pub table_end :: fn() { igEndTable(); }
+
+// Declare a column: its header, its flags (COLUMN_*), and a width (0 for automatic).
+pub table_column :: fn(label: []const u8, flags: i32, width: f32) {
+    l: [256]u8 = .{};
+    igTableSetupColumn(c(label, l[:]), flags, width, 0u32);
+}
+
+// Keep the first `rows` rows (the headers) and `cols` columns in view when scrolling.
+pub table_freeze :: fn(cols: i32, rows: i32) { igTableSetupScrollFreeze(cols, rows); }
+pub table_headers :: fn() { igTableHeadersRow(); }
+pub table_row :: fn() { igTableNextRow(0, 0.0); }
+pub table_next_column :: fn() -> bool { return igTableNextColumn(); }
+pub table_column_index :: fn(column: i32) -> bool { return igTableSetColumnIndex(column); }
+
+// How the table is sorted, or null when it is not sortable. When `dirty` is true, sort the
+// rows and call `table_sorted`.
+pub table_sort_specs :: fn() -> ?SortSpecs {
+    p := igTableGetSortSpecs();
+    if p == 0usize { return null; }
+    specs: SortSpecs = unsafe *core::ptr_from_int(*SortSpecs, p);
+    return specs;
+}
+
+// The `i`th sort key of `specs`.
+pub sort_column :: fn(specs: SortSpecs, i: i32) -> ColumnSort {
+    at: usize = specs.specs + (i as usize) * 12usize;
+    col: ColumnSort = unsafe *core::ptr_from_int(*ColumnSort, at);
+    return col;
+}
+
+// Say the rows are sorted the way the specs ask.
+pub table_sorted :: fn() {
+    p := igTableGetSortSpecs();
+    if p == 0usize { return; }
+    specs := unsafe core::ptr_from_int(*SortSpecs, p);
+    specs.dirty = false;
+}
+
+// Constants
+
+// Window flags
+pub NO_TITLE_BAR :: 1;
+pub NO_RESIZE :: 2;
+pub NO_MOVE :: 4;
+pub NO_COLLAPSE :: 32;
+pub ALWAYS_AUTO_RESIZE :: 64;
+pub NO_SAVED_SETTINGS :: 256;
+pub MENU_BAR :: 1024;
+pub NO_DOCKING :: 524288;
+
+// Dock space flags
+pub PASSTHRU_CENTRAL_NODE :: 8;
+
+// Table flags
+pub TABLE_RESIZABLE :: 1;
+pub TABLE_REORDERABLE :: 2;
+pub TABLE_HIDEABLE :: 4;
+pub TABLE_SORTABLE :: 8;
+pub TABLE_CONTEXT_MENU_IN_BODY :: 32;
+pub TABLE_ROW_BG :: 64;
+pub TABLE_BORDERS_INNER_H :: 128;
+pub TABLE_BORDERS_OUTER_H :: 256;
+pub TABLE_BORDERS_INNER_V :: 512;
+pub TABLE_BORDERS_OUTER_V :: 1024;
+pub TABLE_SIZING_FIXED_FIT :: 8192;
+pub TABLE_SIZING_STRETCH_PROP :: 24576;
+pub TABLE_SCROLL_X :: 16777216;
+pub TABLE_SCROLL_Y :: 33554432;
+pub TABLE_SORT_MULTI :: 67108864;
+pub TABLE_SORT_TRISTATE :: 134217728;
+pub TABLE_HIGHLIGHT_HOVERED_COLUMN :: 268435456;
+
+// Table column flags
+pub COLUMN_DEFAULT_HIDE :: 2;
+pub COLUMN_DEFAULT_SORT :: 4;
+pub COLUMN_WIDTH_STRETCH :: 8;
+pub COLUMN_WIDTH_FIXED :: 16;
+pub COLUMN_NO_REORDER :: 64;
+pub COLUMN_NO_HIDE :: 128;
+pub COLUMN_NO_SORT :: 512;
+pub COLUMN_PREFER_SORT_DESCENDING :: 32768;
+
+// Sort directions
+pub ASCENDING :: 1u8;
+pub DESCENDING :: 2u8;
+
+// Selectable and input flags
+pub SELECTABLE_SPAN_ALL_COLUMNS :: 2;
+pub SELECTABLE_ALLOW_DOUBLE_CLICK :: 4;
+pub INPUT_CHARS_DECIMAL :: 1;
+pub INPUT_ENTER_RETURNS_TRUE :: 64;
+pub INPUT_AUTO_SELECT_ALL :: 4096;
+
+// Conditions
+pub ALWAYS :: 1;
+pub FIRST_USE_EVER :: 4;
+pub APPEARING :: 8;
+
+// Keys and modifiers
+pub KEY_TAB :: 512;
+pub KEY_DELETE :: 522;
+pub KEY_ENTER :: 525;
+pub KEY_ESCAPE :: 526;
+pub KEY_K :: 556;
+pub KEY_N :: 559;
+pub KEY_O :: 560;
+pub KEY_S :: 564;
+pub KEY_F2 :: 573;
+pub MOD_CTRL :: 4096;
+pub MOD_SHIFT :: 8192;
+pub MOD_ALT :: 16384;
+
+// Style colors (ImGuiCol_)
+pub COL_TEXT :: 0;
+pub COL_TEXT_DISABLED :: 1;
+pub COL_WINDOW_BG :: 2;
+pub COL_CHILD_BG :: 3;
+pub COL_POPUP_BG :: 4;
+pub COL_BORDER :: 5;
+pub COL_BORDER_SHADOW :: 6;
+pub COL_FRAME_BG :: 7;
+pub COL_FRAME_BG_HOVERED :: 8;
+pub COL_FRAME_BG_ACTIVE :: 9;
+pub COL_TITLE_BG :: 10;
+pub COL_TITLE_BG_ACTIVE :: 11;
+pub COL_TITLE_BG_COLLAPSED :: 12;
+pub COL_MENU_BAR_BG :: 13;
+pub COL_SCROLLBAR_BG :: 14;
+pub COL_SCROLLBAR_GRAB :: 15;
+pub COL_SCROLLBAR_GRAB_HOVERED :: 16;
+pub COL_SCROLLBAR_GRAB_ACTIVE :: 17;
+pub COL_CHECK_MARK :: 18;
+pub COL_CHECKBOX_SELECTED_BG :: 19;
+pub COL_SLIDER_GRAB :: 20;
+pub COL_SLIDER_GRAB_ACTIVE :: 21;
+pub COL_BUTTON :: 22;
+pub COL_BUTTON_HOVERED :: 23;
+pub COL_BUTTON_ACTIVE :: 24;
+pub COL_HEADER :: 25;
+pub COL_HEADER_HOVERED :: 26;
+pub COL_HEADER_ACTIVE :: 27;
+pub COL_SEPARATOR :: 28;
+pub COL_SEPARATOR_HOVERED :: 29;
+pub COL_SEPARATOR_ACTIVE :: 30;
+pub COL_RESIZE_GRIP :: 31;
+pub COL_RESIZE_GRIP_HOVERED :: 32;
+pub COL_RESIZE_GRIP_ACTIVE :: 33;
+pub COL_INPUT_TEXT_CURSOR :: 34;
+pub COL_TAB_HOVERED :: 35;
+pub COL_TAB :: 36;
+pub COL_TAB_SELECTED :: 37;
+pub COL_TAB_SELECTED_OVERLINE :: 38;
+pub COL_TAB_DIMMED :: 39;
+pub COL_TAB_DIMMED_SELECTED :: 40;
+pub COL_TAB_DIMMED_SELECTED_OVERLINE :: 41;
+pub COL_DOCKING_PREVIEW :: 42;
+pub COL_DOCKING_EMPTY_BG :: 43;
+pub COL_PLOT_LINES :: 44;
+pub COL_PLOT_LINES_HOVERED :: 45;
+pub COL_PLOT_HISTOGRAM :: 46;
+pub COL_PLOT_HISTOGRAM_HOVERED :: 47;
+pub COL_TABLE_HEADER_BG :: 48;
+pub COL_TABLE_BORDER_STRONG :: 49;
+pub COL_TABLE_BORDER_LIGHT :: 50;
+pub COL_TABLE_ROW_BG :: 51;
+pub COL_TABLE_ROW_BG_ALT :: 52;
+pub COL_TEXT_LINK :: 53;
+pub COL_TEXT_SELECTED_BG :: 54;
+pub COL_TREE_LINES :: 55;
+pub COL_DRAG_DROP_TARGET :: 56;
+pub COL_DRAG_DROP_TARGET_BG :: 57;
+pub COL_UNSAVED_MARKER :: 58;
+pub COL_NAV_CURSOR :: 59;
+pub COL_NAV_WINDOWING_HIGHLIGHT :: 60;
+pub COL_NAV_WINDOWING_DIM_BG :: 61;
+pub COL_MODAL_WINDOW_DIM_BG :: 62;
+pub COL_COUNT :: 63;
+
+// Inside
+
+// `text` as a C string in `buf`, cut to fit.
+c :: fn(text: []const u8, buf: []u8) -> [*]const u8 {
+    n := text.len;
+    if n > buf.len - 1usize { n = buf.len - 1usize; }
+    i: usize = 0usize;
+    while i < n {
+        buf[i] = text[i];
+        i += 1usize;
+    }
+    buf[n] = 0u8;
+    return buf.ptr;
+}
+
+#extern("cimgui", "fels_app_open")
+fels_app_open :: fn(title: [*]const u8, width: i32, height: i32, flags: i32, ini_path: usize) -> i32;
+#extern("cimgui", "fels_app_begin_frame")
+fels_app_begin_frame :: fn() -> i32;
+#extern("cimgui", "fels_app_end_frame")
+fels_app_end_frame :: fn(r: f32, g: f32, b: f32);
+#extern("cimgui", "fels_app_close")
+fels_app_close :: fn();
+#extern("cimgui", "fels_app_quit")
+fels_app_quit :: fn();
+#extern("cimgui", "fels_app_dpi_scale")
+fels_app_dpi_scale :: fn() -> f32;
+#extern("cimgui", "fels_app_load_font")
+fels_app_load_font :: fn(path: [*]const u8, size: f32) -> i32;
+#extern("cimgui", "fels_app_set_color")
+fels_app_set_color :: fn(idx: i32, r: f32, g: f32, b: f32, a: f32);
+#extern("cimgui", "fels_app_set_rounding")
+fels_app_set_rounding :: fn(window: f32, frame: f32, tab: f32, scrollbar: f32);
+#extern("cimgui", "fels_app_set_spacing")
+fels_app_set_spacing :: fn(frame_x: f32, frame_y: f32, item_x: f32, item_y: f32, cell_x: f32, cell_y: f32);
+#extern("cimgui", "fels_app_set_borders")
+fels_app_set_borders :: fn(window: f32, frame: f32, tab: f32);
+
+#extern("cimgui", "igBegin")
+igBegin :: fn(name: [*]const u8, p_open: usize, flags: i32) -> bool;
+#extern("cimgui", "igEnd")
+igEnd :: fn();
+#extern("cimgui", "igDockSpaceOverViewport")
+igDockSpaceOverViewport :: fn(id: u32, viewport: usize, flags: i32, window_class: usize) -> u32;
+#extern("cimgui", "igGetMainViewport")
+igGetMainViewport :: fn() -> usize;
+#extern("cimgui", "igDockBuilderDockWindow")
+igDockBuilderDockWindow :: fn(name: [*]const u8, node: u32);
+#extern("cimgui", "igSetNextWindowSize")
+igSetNextWindowSize :: fn(size: Vec2, cond: i32);
+#extern("cimgui", "igSetWindowFocus_Str")
+igSetWindowFocus_Str :: fn(name: [*]const u8);
+#extern("cimgui", "igBeginChild_Str")
+igBeginChild_Str :: fn(id: [*]const u8, size: Vec2, child_flags: i32, window_flags: i32) -> bool;
+#extern("cimgui", "igEndChild")
+igEndChild :: fn();
+#extern("cimgui", "igSameLine")
+igSameLine :: fn(offset: f32, spacing: f32);
+#extern("cimgui", "igSeparator")
+igSeparator :: fn();
+#extern("cimgui", "igDummy")
+igDummy :: fn(size: Vec2);
+#extern("cimgui", "igGetContentRegionAvail")
+igGetContentRegionAvail :: fn() -> Vec2;
+#extern("cimgui", "igGetFrameHeight")
+igGetFrameHeight :: fn() -> f32;
+#extern("cimgui", "igGetCursorPosX")
+igGetCursorPosX :: fn() -> f32;
+#extern("cimgui", "igSetCursorPosX")
+igSetCursorPosX :: fn(x: f32);
+#extern("cimgui", "igSetNextItemWidth")
+igSetNextItemWidth :: fn(w: f32);
+#extern("cimgui", "igPushID_Int")
+igPushID_Int :: fn(id: i32);
+#extern("cimgui", "igPopID")
+igPopID :: fn();
+#extern("cimgui", "igBeginDisabled")
+igBeginDisabled :: fn(disabled: bool);
+#extern("cimgui", "igEndDisabled")
+igEndDisabled :: fn();
+#extern("cimgui", "igCalcTextSize")
+igCalcTextSize :: fn(text: [*]const u8, text_end: usize, hide_after_hash: bool, wrap_width: f32) -> Vec2;
+#extern("cimgui", "igTextUnformatted")
+igTextUnformatted :: fn(text: [*]const u8, text_end: usize);
+#extern("cimgui", "igPushStyleColor_Vec4")
+igPushStyleColor_Vec4 :: fn(idx: i32, color: Vec4);
+#extern("cimgui", "igPopStyleColor")
+igPopStyleColor :: fn(count: i32);
+#extern("cimgui", "igButton")
+igButton :: fn(label: [*]const u8, size: Vec2) -> bool;
+#extern("cimgui", "igCheckbox")
+igCheckbox :: fn(label: [*]const u8, value: *bool) -> bool;
+#extern("cimgui", "igSelectable_Bool")
+igSelectable_Bool :: fn(label: [*]const u8, selected: bool, flags: i32, size: Vec2) -> bool;
+#extern("cimgui", "igInputText")
+igInputText :: fn(label: [*]const u8, buf: [*]u8, size: usize, flags: i32, callback: usize, user_data: usize) -> bool;
+#extern("cimgui", "igBeginCombo")
+igBeginCombo :: fn(label: [*]const u8, preview: [*]const u8, flags: i32) -> bool;
+#extern("cimgui", "igEndCombo")
+igEndCombo :: fn();
+#extern("cimgui", "igIsItemHovered")
+igIsItemHovered :: fn(flags: i32) -> bool;
+#extern("cimgui", "igBeginTooltip")
+igBeginTooltip :: fn() -> bool;
+#extern("cimgui", "igEndTooltip")
+igEndTooltip :: fn();
+#extern("cimgui", "igIsKeyChordPressed_Nil")
+igIsKeyChordPressed_Nil :: fn(chord: i32) -> bool;
+#extern("cimgui", "igSetKeyboardFocusHere")
+igSetKeyboardFocusHere :: fn(offset: i32);
+#extern("cimgui", "igSetItemDefaultFocus")
+igSetItemDefaultFocus :: fn();
+#extern("cimgui", "igShowDemoWindow")
+igShowDemoWindow :: fn(open: *bool);
+#extern("cimgui", "igBeginMainMenuBar")
+igBeginMainMenuBar :: fn() -> bool;
+#extern("cimgui", "igEndMainMenuBar")
+igEndMainMenuBar :: fn();
+#extern("cimgui", "igBeginMenu")
+igBeginMenu :: fn(label: [*]const u8, enabled: bool) -> bool;
+#extern("cimgui", "igEndMenu")
+igEndMenu :: fn();
+#extern("cimgui", "igMenuItem_Bool")
+igMenuItem_Bool :: fn(label: [*]const u8, shortcut: [*]const u8, selected: bool, enabled: bool) -> bool;
+#extern("cimgui", "igMenuItem_BoolPtr")
+igMenuItem_BoolPtr :: fn(label: [*]const u8, shortcut: [*]const u8, selected: *bool, enabled: bool) -> bool;
+#extern("cimgui", "igOpenPopup_Str")
+igOpenPopup_Str :: fn(id: [*]const u8, flags: i32);
+#extern("cimgui", "igBeginPopupModal")
+igBeginPopupModal :: fn(name: [*]const u8, p_open: usize, flags: i32) -> bool;
+#extern("cimgui", "igCloseCurrentPopup")
+igCloseCurrentPopup :: fn();
+#extern("cimgui", "igEndPopup")
+igEndPopup :: fn();
+#extern("cimgui", "igBeginTable")
+igBeginTable :: fn(id: [*]const u8, columns: i32, flags: i32, outer_size: Vec2, inner_width: f32) -> bool;
+#extern("cimgui", "igEndTable")
+igEndTable :: fn();
+#extern("cimgui", "igTableSetupColumn")
+igTableSetupColumn :: fn(label: [*]const u8, flags: i32, width: f32, user_id: u32);
+#extern("cimgui", "igTableSetupScrollFreeze")
+igTableSetupScrollFreeze :: fn(cols: i32, rows: i32);
+#extern("cimgui", "igTableHeadersRow")
+igTableHeadersRow :: fn();
+#extern("cimgui", "igTableNextRow")
+igTableNextRow :: fn(flags: i32, min_height: f32);
+#extern("cimgui", "igTableNextColumn")
+igTableNextColumn :: fn() -> bool;
+#extern("cimgui", "igTableSetColumnIndex")
+igTableSetColumnIndex :: fn(column: i32) -> bool;
+#extern("cimgui", "igTableGetSortSpecs")
+igTableGetSortSpecs :: fn() -> usize;
