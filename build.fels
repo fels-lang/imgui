@@ -19,4 +19,10 @@ build :: fn(b: Build) {
     plots.runtime_file("lib/cimgui.dll");
     plots.windowed();
     b.run_step("run-plots", plots);
+
+    waves := b.executable("waves", "examples/waves.fels");
+    waves.lib_path("lib");
+    waves.runtime_file("lib/cimgui.dll");
+    waves.windowed();
+    b.run_step("run-waves", waves);
 }

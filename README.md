@@ -84,7 +84,8 @@ if plot::begin("##wealth", -1.0, 280.0, plot::NO_TITLE) {
 Each item takes its colour (`auto_color()` for the next one of the colormap) and a weight in
 pixels; `style` takes the plot colours from the ImGui style and sets the colours of the items,
 `add_colormap` and `push_colormap` give a heatmap its scale. `examples/plots.fels` shows them
-(`fels build run-plots`).
+(`fels build run-plots`), and `examples/waves.fels` two moving waves in 40 lines
+(`fels build run-waves`).
 
 ## Notes
 
@@ -97,6 +98,7 @@ Everything else of Dear ImGui is in `cimgui.dll` too: bind more of `lib/cimgui.h
 ```
 fels build run         build and run examples/demo.fels
 fels build run-plots   build and run examples/plots.fels
+fels build run-waves   build and run examples/waves.fels
 ```
 
 `native/` holds the C++ code of the window and the plots and the build script; `lib/README.md`

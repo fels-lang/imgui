@@ -1,0 +1,43 @@
+// Two waves that move, in a window: a plot of ImPlot from Fels (fels build run-waves).
+#import std.math;
+#import imgui;
+#import imgui.{ Vec4 };
+#import imgui.plot;
+
+main :: fn() -> i32 {
+    if !imgui::open("Waves", 960, 540, 0, "") { return 1; }
+    font := imgui::load_font("C:/Windows/Fonts/segoeui.ttf", 18.0);
+    teal: Vec4 = .{ 0.16, 0.60, 0.66, 1.0 };
+    amber: Vec4 = .{ 0.88, 0.66, 0.29, 1.0 };
+    xs: [400]f64 = .{};
+    a: [400]f64 = .{};
+    b: [400]f64 = .{};
+    t: f32 = 0.0;
+    open := true;
+    while imgui::begin_frame() {
+        t += 0.02;
+        i: usize = 0usize;
+        while i < 400usize {
+            x := (i as f32) * 0.03;
+            xs[i] = x as f64;
+            a[i] = math::sin(x + t) as f64;
+            b[i] = (math::sin(x * 2.0 - t) * 0.5) as f64;
+            i += 1usize;
+        }
+        imgui::set_next_window_size(imgui::work_size(), imgui::ALWAYS);
+        imgui::center_next_window(imgui::ALWAYS);
+        if imgui::begin_with("Waves", &open, imgui::NO_TITLE_BAR | imgui::NO_RESIZE) {
+            if plot::begin("##waves", -1.0, -1.0, plot::NO_TITLE) {
+                plot::axis_limits(plot::Y1, -1.3, 1.3, plot::ALWAYS);
+                plot::shaded("##area", xs[:], a[:], 0.0, teal, 0.2, plot::ITEM_NO_LEGEND);
+                plot::line("sin(x + t)", xs[:], a[:], teal, 2.0, 0);
+                plot::line("sin(2x - t) / 2", xs[:], b[:], amber, 2.0, 0);
+                plot::end();
+            }
+        }
+        imgui::end();
+        imgui::end_frame(0.10, 0.11, 0.12);
+    }
+    imgui::close();
+    return 0;
+}
