@@ -299,6 +299,10 @@ pub input_hint :: fn(label: []const u8, hint: []const u8, buf: []u8, flags: i32)
     return igInputTextWithHint(c(label, l[:]), c(hint, h[:]), buf.ptr, buf.len, flags, 0usize, 0usize);
 }
 
+// What Dear ImGui reads as "find the range yourself" (the largest f32, written out: Fels has
+// no exponent notation).
+FLT_MAX :: 340282346638528859811704183484516925440.0;
+
 // A line through `values`, `size` big (0 for the width or height that is left); the line spans
 // `low` to `high`, or the values' own range when both are 0. `overlay` is written over it.
 pub plot_lines :: fn(label: []const u8, values: []const f32, overlay: []const u8, low: f32, high: f32, size: Vec2) {
@@ -307,8 +311,8 @@ pub plot_lines :: fn(label: []const u8, values: []const f32, overlay: []const u8
     lo := low;
     hi := high;
     if lo == 0.0 && hi == 0.0 {
-        lo = 3.4e38;
-        hi = -3.4e38;
+        lo = FLT_MAX;
+        hi = FLT_MAX;
     }
     igPlotLines_FloatPtr(c(label, l[:]), values.ptr, values.len as i32, 0, c(overlay, o[:]), lo, hi, size, 4);
 }
