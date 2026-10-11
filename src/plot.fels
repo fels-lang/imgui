@@ -1,0 +1,447 @@
+// ImPlot: plots in a Dear ImGui window. Lines, areas, stairs, bars (also grouped and stacked),
+// scatter, pie charts, heatmaps, vertical and horizontal lines, text and tags, on axes that zoom,
+// pan and fit, with a legend to hide and show the items. An axis can count seconds since 1970
+// and show dates (`axis_time`).
+//
+//   if plot::begin("##wealth", -1.0, 280.0, plot::NO_TITLE) {
+//       plot::axes("", "", plot::AXIS_AUTO_FIT, plot::AXIS_AUTO_FIT);
+//       plot::axis_time(plot::X1);
+//       plot::shaded("Wert", days, values, 0.0, plot::auto_color(), 0.25, 0);
+//       plot::line("Wert", days, values, plot::auto_color(), 2.0, 0);
+//       plot::end();
+//   }
+//
+// `end` only after a `begin` that was true. Items take their colour (`auto_color()` for the
+// next of the colormap, which `style` sets) and a weight in pixels; their flags are the
+// item flags (`ITEM_NO_LEGEND`, ...) and those of their kind (`LINE_*`, `BARS_*`, ...). The
+// data are `f64`; an item draws as many points as the shorter of its slices has.
+
+#import imgui.{ Vec2, Vec4 };
+
+// Axes
+pub X1 :: 0;
+pub X2 :: 1;
+pub X3 :: 2;
+pub Y1 :: 3;
+pub Y2 :: 4;
+pub Y3 :: 5;
+
+// Plot flags
+pub NO_TITLE :: 1;
+pub NO_LEGEND :: 2;
+pub NO_MOUSE_TEXT :: 4;
+pub NO_INPUTS :: 8;
+pub NO_MENUS :: 16;
+pub NO_BOX_SELECT :: 32;
+pub NO_FRAME :: 64;
+pub EQUAL :: 128;
+pub CROSSHAIRS :: 256;
+pub CANVAS_ONLY :: 55;
+
+// Axis flags
+pub AXIS_NO_LABEL :: 1;
+pub AXIS_NO_GRID_LINES :: 2;
+pub AXIS_NO_TICK_MARKS :: 4;
+pub AXIS_NO_TICK_LABELS :: 8;
+pub AXIS_NO_INITIAL_FIT :: 16;
+pub AXIS_NO_MENUS :: 32;
+pub AXIS_OPPOSITE :: 256;
+pub AXIS_INVERT :: 1024;
+pub AXIS_AUTO_FIT :: 2048;
+pub AXIS_RANGE_FIT :: 4096;
+pub AXIS_LOCK :: 49152;
+pub AXIS_NO_DECORATIONS :: 15;
+
+// Subplot flags
+pub SUBPLOTS_NO_TITLE :: 1;
+pub SUBPLOTS_NO_LEGEND :: 2;
+pub SUBPLOTS_NO_RESIZE :: 8;
+pub SUBPLOTS_SHARE_ITEMS :: 32;
+pub SUBPLOTS_LINK_ROWS :: 64;
+pub SUBPLOTS_LINK_COLS :: 128;
+pub SUBPLOTS_LINK_ALL_X :: 256;
+pub SUBPLOTS_LINK_ALL_Y :: 512;
+
+// Legend flags and places
+pub LEGEND_NO_BUTTONS :: 1;
+pub LEGEND_OUTSIDE :: 16;
+pub LEGEND_HORIZONTAL :: 32;
+pub LEGEND_SORT :: 64;
+pub CENTER :: 0;
+pub NORTH :: 1;
+pub SOUTH :: 2;
+pub WEST :: 4;
+pub EAST :: 8;
+pub NORTH_WEST :: 5;
+pub NORTH_EAST :: 9;
+pub SOUTH_WEST :: 6;
+pub SOUTH_EAST :: 10;
+
+// Conditions of `axis_limits`
+pub ONCE :: 2;
+pub ALWAYS :: 1;
+
+// Item flags, then the flags of each kind of item
+pub ITEM_NO_LEGEND :: 1;
+pub ITEM_NO_FIT :: 2;
+pub LINE_SEGMENTS :: 1024;
+pub LINE_SKIP_NAN :: 4096;
+pub LINE_SHADED :: 16384;
+pub STAIRS_PRE_STEP :: 1024;
+pub STAIRS_SHADED :: 2048;
+pub BARS_HORIZONTAL :: 1024;
+pub BAR_GROUPS_HORIZONTAL :: 1024;
+pub BAR_GROUPS_STACKED :: 2048;
+pub PIE_NORMALIZE :: 1024;
+pub PIE_IGNORE_HIDDEN :: 2048;
+pub PIE_EXPLODING :: 4096;
+pub HEATMAP_COL_MAJOR :: 1024;
+pub INF_LINES_HORIZONTAL :: 1024;
+
+// Markers of `scatter`
+pub MARKER_CIRCLE :: 0;
+pub MARKER_SQUARE :: 1;
+pub MARKER_DIAMOND :: 2;
+pub MARKER_UP :: 3;
+pub MARKER_DOWN :: 4;
+pub MARKER_CROSS :: 7;
+pub MARKER_PLUS :: 8;
+
+// A place in a plot, in the units of its axes.
+pub Point :: struct { x: f64, y: f64 }
+
+// The next colour of the colormap, for an item.
+pub auto_color :: fn() -> Vec4 {
+    out: Vec4 = .{ 0.0, 0.0, 0.0, -1.0 };
+    return out;
+}
+
+// A plot `width` by `height` pixels (-1 for all the room there is, 0 for the default height);
+// `end` it only when this is true. `title` is shown above it unless `NO_TITLE`; "##name" gives
+// a plot a name without a title.
+pub begin :: fn(title: []const u8, width: f32, height: f32, flags: i32) -> bool {
+    t: [256]u8 = .{};
+    return fels_plot_begin(z(title, t[:]), width, height, flags) == 1;
+}
+
+pub end :: fn() { fels_plot_end(); }
+
+// `rows` by `cols` plots in one area, each begun with `begin` (and ended) in turn; end the area
+// with `subplots_end` only when this is true.
+pub subplots_begin :: fn(title: []const u8, rows: i32, cols: i32, width: f32, height: f32, flags: i32) -> bool {
+    t: [256]u8 = .{};
+    return fels_plot_subplots_begin(z(title, t[:]), rows, cols, width, height, flags) == 1;
+}
+
+pub subplots_end :: fn() { fels_plot_subplots_end(); }
+
+// The labels and flags of the first two axes; after `begin`, before the items.
+pub axes :: fn(x_label: []const u8, y_label: []const u8, x_flags: i32, y_flags: i32) {
+    x: [128]u8 = .{};
+    y: [128]u8 = .{};
+    fels_plot_axes(z(x_label, x[:]), z(y_label, y[:]), x_flags, y_flags);
+}
+
+// Use `axis` (X2, Y2, ...: the first two are always there) with a label and flags.
+pub axis :: fn(axis: i32, label: []const u8, flags: i32) {
+    l: [128]u8 = .{};
+    fels_plot_axis(axis, z(label, l[:]), flags);
+}
+
+// `axis` counts seconds since 1970 (UTC) and shows dates and times.
+pub axis_time :: fn(axis: i32) { fels_plot_axis_time(axis); }
+
+// `axis` counts seconds since 1970 (UTC) and shows dates the German way, as fine as the range it
+// shows: years ("2025"), months ("Okt 25") or days ("15.01.").
+pub axis_dates :: fn(axis: i32) { fels_plot_axis_dates(axis); }
+
+// `axis` is logarithmic.
+pub axis_log :: fn(axis: i32) { fels_plot_axis_log(axis); }
+
+// How the numbers of `axis` are written, as printf does: "%.0f %%", "%.2f EUR".
+pub axis_format :: fn(axis: i32, fmt: []const u8) {
+    f: [64]u8 = .{};
+    fels_plot_axis_format(axis, z(fmt, f[:]));
+}
+
+// The range `axis` shows: once (`ONCE`, the user may zoom then) or in every frame (`ALWAYS`).
+pub axis_limits :: fn(axis: i32, lo: f64, hi: f64, cond: i32) { fels_plot_axis_limits(axis, lo, hi, cond); }
+
+// Ticks of `axis` at `values` with the texts `labels` (at most 64), with or without the ticks
+// ImPlot would put.
+pub axis_ticks :: fn(axis: i32, values: []const f64, labels: []const []const u8, keep_default: bool) {
+    l: Labels = .{ .{}, .{}, 0usize };
+    n := l.take(labels);
+    if n > values.len { n = values.len; }
+    keep: i32 = 0;
+    if keep_default { keep = 1; }
+    fels_plot_axis_ticks(axis, values.ptr, n as i32, l.ptrs[:].ptr, keep);
+}
+
+// Where the legend goes (`NORTH_WEST`, ...) and how (`LEGEND_*`).
+pub legend :: fn(location: i32, flags: i32) { fels_plot_legend(location, flags); }
+
+// Fit the axes to the items once more, in the next frame's plot.
+pub fit_next :: fn() { fels_plot_fit_next(); }
+
+pub line :: fn(label: []const u8, xs: []const f64, ys: []const f64, color: Vec4, weight: f32, flags: i32) {
+    l: [256]u8 = .{};
+    fels_plot_line(z(label, l[:]), xs.ptr, ys.ptr, count2(xs, ys), color, weight, flags);
+}
+
+// The area between the line of `xs` and `ys` and `y_ref`, `alpha` its opacity.
+pub shaded :: fn(label: []const u8, xs: []const f64, ys: []const f64, y_ref: f64, color: Vec4, alpha: f32, flags: i32) {
+    l: [256]u8 = .{};
+    fels_plot_shaded(z(label, l[:]), xs.ptr, ys.ptr, count2(xs, ys), y_ref, color, alpha, flags);
+}
+
+// The area between two lines.
+pub shaded_between :: fn(label: []const u8, xs: []const f64, ys1: []const f64, ys2: []const f64, color: Vec4, alpha: f32, flags: i32) {
+    l: [256]u8 = .{};
+    n := count2(xs, ys1);
+    if (ys2.len as i32) < n { n = ys2.len as i32; }
+    fels_plot_shaded_between(z(label, l[:]), xs.ptr, ys1.ptr, ys2.ptr, n, color, alpha, flags);
+}
+
+// A line in steps: each value holds until the next.
+pub stairs :: fn(label: []const u8, xs: []const f64, ys: []const f64, color: Vec4, weight: f32, flags: i32) {
+    l: [256]u8 = .{};
+    fels_plot_stairs(z(label, l[:]), xs.ptr, ys.ptr, count2(xs, ys), color, weight, flags);
+}
+
+// Bars at `xs`, `width` wide in the units of the axis.
+pub bars :: fn(label: []const u8, xs: []const f64, ys: []const f64, width: f64, color: Vec4, flags: i32) {
+    l: [256]u8 = .{};
+    fels_plot_bars(z(label, l[:]), xs.ptr, ys.ptr, count2(xs, ys), width, color, flags);
+}
+
+// Bars of several items (`labels`, at most 64) in `groups` groups: `values` holds the groups of
+// the first item, then those of the second, ... `size` is the width of a group, `shift` moves
+// them; `BAR_GROUPS_STACKED` puts them on top of each other.
+pub bar_groups :: fn(labels: []const []const u8, values: []const f64, groups: usize, size: f64, shift: f64, flags: i32) {
+    l: Labels = .{ .{}, .{}, 0usize };
+    items := l.take(labels);
+    if groups == 0usize || items * groups > values.len { return; }
+    fels_plot_bar_groups(l.ptrs[:].ptr, values.ptr, items as i32, groups as i32, size, shift, flags);
+}
+
+pub scatter :: fn(label: []const u8, xs: []const f64, ys: []const f64, color: Vec4, marker: i32, size: f32, flags: i32) {
+    l: [256]u8 = .{};
+    fels_plot_scatter(z(label, l[:]), xs.ptr, ys.ptr, count2(xs, ys), color, marker, size, flags);
+}
+
+// Lines across the whole plot at `values` (vertical, or horizontal with `INF_LINES_HORIZONTAL`).
+pub inf_lines :: fn(label: []const u8, values: []const f64, color: Vec4, weight: f32, flags: i32) {
+    l: [256]u8 = .{};
+    fels_plot_inf_lines(z(label, l[:]), values.ptr, values.len as i32, color, weight, flags);
+}
+
+// A pie of `values` (at most 64) around `x`, `y` with `radius`, in the units of the axes (an
+// `EQUAL` plot keeps it round); `fmt` writes each slice's value on it ("" for none), the first
+// slice starts at `angle0` degrees.
+pub pie :: fn(labels: []const []const u8, values: []const f64, x: f64, y: f64, radius: f64, fmt: []const u8, angle0: f64, flags: i32) {
+    l: Labels = .{ .{}, .{}, 0usize };
+    n := l.take(labels);
+    if n > values.len { n = values.len; }
+    f: [64]u8 = .{};
+    fels_plot_pie(l.ptrs[:].ptr, values.ptr, n as i32, x, y, radius, z(fmt, f[:]), angle0, flags);
+}
+
+// `rows` by `cols` values (row by row) as coloured cells from `x0`, `y0` to `x1`, `y1`, the
+// colours from `lo` to `hi` (both 0: from the values); `fmt` writes each value in its cell.
+pub heatmap :: fn(label: []const u8, values: []const f64, rows: i32, cols: i32, lo: f64, hi: f64, fmt: []const u8, x0: f64, y0: f64, x1: f64, y1: f64, flags: i32) {
+    if (rows * cols) as usize > values.len { return; }
+    l: [256]u8 = .{};
+    f: [64]u8 = .{};
+    fels_plot_heatmap(z(label, l[:]), values.ptr, rows, cols, lo, hi, z(fmt, f[:]), x0, y0, x1, y1, flags);
+}
+
+// `text` at `x`, `y`, moved by `off_x`, `off_y` pixels.
+pub text :: fn(text: []const u8, x: f64, y: f64, off_x: f32, off_y: f32, color: Vec4) {
+    t: [256]u8 = .{};
+    fels_plot_text(z(text, t[:]), x, y, off_x, off_y, color);
+}
+
+// A label on the x axis at `x` (on the y axis at `y`).
+pub tag_x :: fn(x: f64, color: Vec4, text: []const u8) {
+    t: [128]u8 = .{};
+    fels_plot_tag_x(x, color, z(text, t[:]));
+}
+
+pub tag_y :: fn(y: f64, color: Vec4, text: []const u8) {
+    t: [128]u8 = .{};
+    fels_plot_tag_y(y, color, z(text, t[:]));
+}
+
+// Whether the mouse is over the plot, and where, in the units of its first axes.
+pub hovered :: fn() -> bool { return fels_plot_hovered() == 1; }
+
+pub mouse :: fn() -> Point {
+    out: Point = .{ 0.0, 0.0 };
+    fels_plot_mouse(&out.x, &out.y);
+    return out;
+}
+
+// ImPlot's colours from Dear ImGui's style (call it after changing that), `colors` (at most 32)
+// as the colours of the items one after the other, and dates as 2024-01-15 when `iso`.
+pub style :: fn(colors: []const Vec4, iso: bool) {
+    n := colors.len;
+    if n > 32usize { n = 32usize; }
+    i: i32 = 0;
+    if iso { i = 1; }
+    fels_plot_style(colors.ptr, n as i32, i);
+}
+
+// The colormaps ImPlot has, for `push_colormap` (the scales suit heatmaps).
+pub MAP_DEEP :: 0;
+pub MAP_DARK :: 1;
+pub MAP_PASTEL :: 2;
+pub MAP_VIRIDIS :: 4;
+pub MAP_PLASMA :: 5;
+pub MAP_COOL :: 7;
+pub MAP_TWILIGHT :: 10;
+pub MAP_RD_BU :: 11;
+pub MAP_PI_YG :: 13;
+pub MAP_SPECTRAL :: 14;
+pub MAP_GREYS :: 15;
+
+// A colormap of `colors` (at most 32): qualitative, one colour after the other for items, or a
+// scale from the first to the last for heatmaps; its number. Make it once: a colormap cannot be
+// taken away again.
+pub add_colormap :: fn(colors: []const Vec4, qualitative: bool) -> i32 {
+    n := colors.len;
+    if n > 32usize { n = 32usize; }
+    q: i32 = 0;
+    if qualitative { q = 1; }
+    return fels_plot_add_colormap(colors.ptr, n as i32, q);
+}
+
+// Use the colormap `cmap` for the items until `pop_colormap`.
+pub push_colormap :: fn(cmap: i32) { fels_plot_push_colormap(cmap); }
+
+pub pop_colormap :: fn() { fels_plot_pop_colormap(); }
+
+// A bar with the colours of `cmap` from `lo` to `hi`, written with `fmt`: the legend of a
+// heatmap, next to its plot.
+pub colormap_scale :: fn(label: []const u8, lo: f64, hi: f64, width: f32, height: f32, fmt: []const u8, cmap: i32) {
+    l: [128]u8 = .{};
+    f: [64]u8 = .{};
+    fels_plot_colormap_scale(z(label, l[:]), lo, hi, width, height, z(fmt, f[:]), cmap);
+}
+
+// ImPlot's window that shows what it can.
+pub demo :: fn(open: *bool) { fels_plot_demo(open); }
+
+count2 :: fn(xs: []const f64, ys: []const f64) -> i32 {
+    if xs.len < ys.len { return xs.len as i32; }
+    return ys.len as i32;
+}
+
+// `text` with a NUL after it, in `buf`.
+z :: fn(text: []const u8, buf: []u8) -> [*]const u8 {
+    n := text.len;
+    if n > buf.len - 1usize { n = buf.len - 1usize; }
+    i: usize = 0usize;
+    while i < n {
+        buf[i] = text[i];
+        i += 1usize;
+    }
+    buf[n] = 0u8;
+    return buf.ptr;
+}
+
+// Up to 64 texts with a NUL after each, and their addresses, for the C side.
+Labels :: struct {
+    text: [4096]u8,
+    ptrs: [64]usize,
+    used: usize,
+
+    // Take `labels`; how many of them fit.
+    take :: fn(self: *Self, labels: []const []const u8) -> usize {
+        n: usize = 0usize;
+        for l in labels {
+            if n >= 64usize || self.used + l.len + 1usize > self.text.len { break; }
+            start := self.used;
+            for c in l {
+                self.text[self.used] = c;
+                self.used += 1usize;
+            }
+            self.text[self.used] = 0u8;
+            self.used += 1usize;
+            unsafe { self.ptrs[n] = (&self.text[start]) as usize; }
+            n += 1usize;
+        }
+        return n;
+    }
+}
+
+#extern("cimgui", "fels_plot_begin")
+fels_plot_begin :: fn(title: [*]const u8, width: f32, height: f32, flags: i32) -> i32;
+#extern("cimgui", "fels_plot_end")
+fels_plot_end :: fn();
+#extern("cimgui", "fels_plot_subplots_begin")
+fels_plot_subplots_begin :: fn(title: [*]const u8, rows: i32, cols: i32, width: f32, height: f32, flags: i32) -> i32;
+#extern("cimgui", "fels_plot_subplots_end")
+fels_plot_subplots_end :: fn();
+#extern("cimgui", "fels_plot_axes")
+fels_plot_axes :: fn(x: [*]const u8, y: [*]const u8, x_flags: i32, y_flags: i32);
+#extern("cimgui", "fels_plot_axis")
+fels_plot_axis :: fn(axis: i32, label: [*]const u8, flags: i32);
+#extern("cimgui", "fels_plot_axis_time")
+fels_plot_axis_time :: fn(axis: i32);
+#extern("cimgui", "fels_plot_axis_dates")
+fels_plot_axis_dates :: fn(axis: i32);
+#extern("cimgui", "fels_plot_axis_log")
+fels_plot_axis_log :: fn(axis: i32);
+#extern("cimgui", "fels_plot_axis_format")
+fels_plot_axis_format :: fn(axis: i32, fmt: [*]const u8);
+#extern("cimgui", "fels_plot_axis_limits")
+fels_plot_axis_limits :: fn(axis: i32, lo: f64, hi: f64, cond: i32);
+#extern("cimgui", "fels_plot_axis_ticks")
+fels_plot_axis_ticks :: fn(axis: i32, values: [*]const f64, count: i32, labels: [*]const usize, keep_default: i32);
+#extern("cimgui", "fels_plot_legend")
+fels_plot_legend :: fn(location: i32, flags: i32);
+#extern("cimgui", "fels_plot_fit_next")
+fels_plot_fit_next :: fn();
+#extern("cimgui", "fels_plot_line")
+fels_plot_line :: fn(label: [*]const u8, xs: [*]const f64, ys: [*]const f64, count: i32, color: Vec4, weight: f32, flags: i32);
+#extern("cimgui", "fels_plot_shaded")
+fels_plot_shaded :: fn(label: [*]const u8, xs: [*]const f64, ys: [*]const f64, count: i32, y_ref: f64, color: Vec4, alpha: f32, flags: i32);
+#extern("cimgui", "fels_plot_shaded_between")
+fels_plot_shaded_between :: fn(label: [*]const u8, xs: [*]const f64, ys1: [*]const f64, ys2: [*]const f64, count: i32, color: Vec4, alpha: f32, flags: i32);
+#extern("cimgui", "fels_plot_stairs")
+fels_plot_stairs :: fn(label: [*]const u8, xs: [*]const f64, ys: [*]const f64, count: i32, color: Vec4, weight: f32, flags: i32);
+#extern("cimgui", "fels_plot_bars")
+fels_plot_bars :: fn(label: [*]const u8, xs: [*]const f64, ys: [*]const f64, count: i32, width: f64, color: Vec4, flags: i32);
+#extern("cimgui", "fels_plot_bar_groups")
+fels_plot_bar_groups :: fn(labels: [*]const usize, values: [*]const f64, items: i32, groups: i32, size: f64, shift: f64, flags: i32);
+#extern("cimgui", "fels_plot_scatter")
+fels_plot_scatter :: fn(label: [*]const u8, xs: [*]const f64, ys: [*]const f64, count: i32, color: Vec4, marker: i32, size: f32, flags: i32);
+#extern("cimgui", "fels_plot_inf_lines")
+fels_plot_inf_lines :: fn(label: [*]const u8, values: [*]const f64, count: i32, color: Vec4, weight: f32, flags: i32);
+#extern("cimgui", "fels_plot_pie")
+fels_plot_pie :: fn(labels: [*]const usize, values: [*]const f64, count: i32, x: f64, y: f64, radius: f64, fmt: [*]const u8, angle0: f64, flags: i32);
+#extern("cimgui", "fels_plot_heatmap")
+fels_plot_heatmap :: fn(label: [*]const u8, values: [*]const f64, rows: i32, cols: i32, lo: f64, hi: f64, fmt: [*]const u8, x0: f64, y0: f64, x1: f64, y1: f64, flags: i32);
+#extern("cimgui", "fels_plot_text")
+fels_plot_text :: fn(text: [*]const u8, x: f64, y: f64, off_x: f32, off_y: f32, color: Vec4);
+#extern("cimgui", "fels_plot_tag_x")
+fels_plot_tag_x :: fn(x: f64, color: Vec4, text: [*]const u8);
+#extern("cimgui", "fels_plot_tag_y")
+fels_plot_tag_y :: fn(y: f64, color: Vec4, text: [*]const u8);
+#extern("cimgui", "fels_plot_hovered")
+fels_plot_hovered :: fn() -> i32;
+#extern("cimgui", "fels_plot_mouse")
+fels_plot_mouse :: fn(x: *f64, y: *f64);
+#extern("cimgui", "fels_plot_style")
+fels_plot_style :: fn(colors: [*]const Vec4, count: i32, iso: i32);
+#extern("cimgui", "fels_plot_add_colormap")
+fels_plot_add_colormap :: fn(colors: [*]const Vec4, count: i32, qualitative: i32) -> i32;
+#extern("cimgui", "fels_plot_push_colormap")
+fels_plot_push_colormap :: fn(cmap: i32);
+#extern("cimgui", "fels_plot_pop_colormap")
+fels_plot_pop_colormap :: fn();
+#extern("cimgui", "fels_plot_colormap_scale")
+fels_plot_colormap_scale :: fn(label: [*]const u8, lo: f64, hi: f64, width: f32, height: f32, fmt: [*]const u8, cmap: i32);
+#extern("cimgui", "fels_plot_demo")
+fels_plot_demo :: fn(open: *bool);
