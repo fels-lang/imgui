@@ -156,12 +156,26 @@ FELS_API void fels_plot_line(const char* label, const double* xs, const double* 
     ImPlot::PlotLine(label, xs, ys, count, spec_of(color, weight, -1.0f, flags));
 }
 
+// ImPlot multiplies the alpha of an area's fill by FillAlpha twice (when it stages the item and
+// when it draws it): a colour of our own carries the alpha itself, an automatic one gets its
+// square root.
+static ImPlotSpec fill_spec(ImVec4 color, float alpha, int flags) {
+    ImPlotSpec s = spec_of(color, -1.0f, -1.0f, flags);
+    if (alpha < 0.0f) alpha = 1.0f;
+    if (color.w >= 0.0f) {
+        s.FillColor.w = alpha;
+    } else {
+        s.FillAlpha = sqrtf(alpha);
+    }
+    return s;
+}
+
 FELS_API void fels_plot_shaded(const char* label, const double* xs, const double* ys, int count, double y_ref, ImVec4 color, float alpha, int flags) {
-    ImPlot::PlotShaded(label, xs, ys, count, y_ref, spec_of(color, -1.0f, alpha, flags));
+    ImPlot::PlotShaded(label, xs, ys, count, y_ref, fill_spec(color, alpha, flags));
 }
 
 FELS_API void fels_plot_shaded_between(const char* label, const double* xs, const double* ys1, const double* ys2, int count, ImVec4 color, float alpha, int flags) {
-    ImPlot::PlotShaded(label, xs, ys1, ys2, count, spec_of(color, -1.0f, alpha, flags));
+    ImPlot::PlotShaded(label, xs, ys1, ys2, count, fill_spec(color, alpha, flags));
 }
 
 FELS_API void fels_plot_stairs(const char* label, const double* xs, const double* ys, int count, ImVec4 color, float weight, int flags) {
