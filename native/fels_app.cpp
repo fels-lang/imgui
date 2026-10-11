@@ -6,6 +6,7 @@
 // Copyright (c) 2014-2026 Omar Cornut).
 
 #include "imgui.h"
+#include "implot.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
@@ -129,6 +130,7 @@ FELS_API int fels_app_open(const char* title, int width, int height, int flags, 
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     if (flags & FELS_APP_KEYBOARD) io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     if (flags & FELS_APP_DOCKING) io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -204,6 +206,7 @@ FELS_API void fels_app_end_frame(float r, float g, float b) {
 FELS_API void fels_app_close(void) {
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
     cleanup_device();
     if (g_hwnd) ::DestroyWindow(g_hwnd);
