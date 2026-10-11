@@ -2,7 +2,8 @@
 
 [Fels](https://github.com/fels-lang/fels) bindings to [Dear ImGui](https://github.com/ocornut/imgui)
 1.92.9b, the docking branch, through [cimgui](https://github.com/cimgui/cimgui), with a ready
-window on Direct3D 11 and the library for 64-bit Windows included.
+window on Direct3D 11, plots by [ImPlot](https://github.com/epezent/implot) (`imgui.plot`), and
+the library for 64-bit Windows included.
 
 ```fels
 #import imgui;
@@ -55,6 +56,30 @@ to them. A program with a window has no console; in `build.fels`: `app.windowed(
   columns, scrolling), `table_column`, `table_freeze`, `table_headers`, `table_row`,
   `table_next_column`, `table_sort_specs`.
 
+## Plots
+
+`#import imgui.plot;` brings ImPlot: lines, areas, stairs, bars (grouped and stacked), scatter,
+pie charts, heatmaps with a colour scale, lines across a plot, text and tags, on axes that zoom,
+pan and fit, with a legend to hide items, subplots, and date axes (`axis_dates` writes them the
+German way: "15.01.", "Okt 25", "2025"; `axis_time` the way of ImPlot).
+
+```fels
+if plot::begin("##wealth", -1.0, 280.0, plot::NO_TITLE) {
+    plot::axes("", "", plot::AXIS_AUTO_FIT, plot::AXIS_AUTO_FIT);
+    plot::axis_dates(plot::X1);
+    plot::shaded("##area", days, values, 0.0, teal, 0.25, plot::ITEM_NO_LEGEND);
+    plot::line("Wert", days, values, teal, 2.0, 0);
+    plot::end();
+}
+```
+
+Each item takes its colour (`auto_color()` for the next one of the colormap) and a weight in
+pixels; `style` takes the plot colours from the ImGui style and sets the colours of the items,
+`add_colormap` and `push_colormap` give a heatmap its scale. `examples/plots.fels` shows them
+(`fels build run-plots`).
+
+## Notes
+
 Texts given as labels are copied into short C strings (255 bytes); `text` takes any length.
 Everything else of Dear ImGui is in `cimgui.dll` too: bind more of `lib/cimgui.h` with
 `#extern("cimgui", "ig...")` as `src/imgui.fels` does.
@@ -62,8 +87,9 @@ Everything else of Dear ImGui is in `cimgui.dll` too: bind more of `lib/cimgui.h
 ## Work on it
 
 ```
-fels build run   build and run examples/demo.fels
+fels build run         build and run examples/demo.fels
+fels build run-plots   build and run examples/plots.fels
 ```
 
-`native/` holds the C++ window code and the build script; `lib/README.md` says how the DLL
-was built.
+`native/` holds the C++ code of the window and the plots and the build script; `lib/README.md`
+says how the DLL was built.
