@@ -1,0 +1,9 @@
+#import std.io;
+#import imgui;
+
+main :: fn() -> i32 {
+    io::print("seconds since boot: ");
+    io::print_u64(imgui::seconds_since_boot());
+    io::println("");
+    return 0;
+}

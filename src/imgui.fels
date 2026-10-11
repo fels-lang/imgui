@@ -1,0 +1,33 @@
+// imgui: Fels bindings to a C library.
+//
+// A binding names the library and the C function, and gives its Fels type:
+//
+//     #extern("imgui", "imgui_init")
+//     pub init :: fn(flags: u32) -> i32;
+//
+// That links imgui.lib from lib/ (see lib/README.md). The two bindings below call
+// kernel32, which every Windows program links, so the package builds and its tests run
+// before your library is there. Replace them with your library's functions.
+
+#extern("kernel32", "GetTickCount64")
+pub ticks_ms :: fn() -> u64;
+
+#extern("kernel32", "GetCurrentProcessId")
+pub process_id :: fn() -> u32;
+
+// A Fels function over a binding: the place for nicer types and checks.
+pub seconds_since_boot :: fn() -> u64 {
+    return ticks_ms() / 1000u64;
+}
+
+#test
+ticks_go_forward :: fn(t: *Test) {
+    a := ticks_ms();
+    b := ticks_ms();
+    t.expect(b >= a);
+}
+
+#test
+has_a_process_id :: fn(t: *Test) {
+    t.expect(process_id() != 0u32);
+}
