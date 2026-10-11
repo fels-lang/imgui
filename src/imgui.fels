@@ -166,6 +166,16 @@ pub work_size :: fn() -> Vec2 {
 }
 
 pub set_next_window_size :: fn(size: Vec2, cond: i32) { igSetNextWindowSize(size, cond); }
+
+// Put the next window in the middle of the main window (`cond`: ALWAYS, FIRST_USE_EVER, ...).
+pub center_next_window :: fn(cond: i32) {
+    vp := igGetMainViewport();
+    pos: Vec2 = unsafe *core::ptr_from_int(*Vec2, vp + 32usize);
+    size := work_size();
+    center: Vec2 = .{ pos.x + size.x * 0.5, pos.y + size.y * 0.5 };
+    pivot: Vec2 = .{ 0.5, 0.5 };
+    igSetNextWindowPos(center, cond, pivot);
+}
 pub set_window_focus :: fn(name: []const u8) {
     n: [256]u8 = .{};
     igSetWindowFocus_Str(c(name, n[:]));
@@ -660,6 +670,8 @@ igDockBuilderSetNodeSize :: fn(node: u32, size: Vec2);
 igDockBuilderSplitNode :: fn(node: u32, dir: i32, ratio: f32, at_dir: *u32, opposite: *u32) -> u32;
 #extern("cimgui", "igDockBuilderFinish")
 igDockBuilderFinish :: fn(node: u32);
+#extern("cimgui", "igSetNextWindowPos")
+igSetNextWindowPos :: fn(pos: Vec2, cond: i32, pivot: Vec2);
 #extern("cimgui", "igSetNextWindowSize")
 igSetNextWindowSize :: fn(size: Vec2, cond: i32);
 #extern("cimgui", "igSetWindowFocus_Str")
