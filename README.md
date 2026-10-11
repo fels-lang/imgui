@@ -45,7 +45,7 @@ to them. A program with a window has no console; in `build.fels`: `app.windowed(
 - **Layouts:** `layout_begin`, `layout_split` and `layout_end` lay out the dock space anew,
   for a first start or a preset; `dock_window` puts a panel into a part.
 - **Widgets:** `text`, `text_colored`, `text_right` (numbers in a column), `button`,
-  `checkbox`, `selectable`, `input_text`, `input_hint`, `combo_begin`, `tooltip`, `pressed` (keys with
+  `checkbox`, `selectable`, `input_text`, `input_hint`, `combo_begin`, `plot_lines`, `tooltip`, `pressed` (keys with
   `MOD_CTRL` and the like).
 - **Menus and popups:** `main_menu_bar_begin`, `menu_begin`, `menu_item`, `menu_toggle`,
   `popup_open`, `popup_modal_begin`.
