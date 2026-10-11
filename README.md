@@ -35,7 +35,7 @@ to them. A program with a window has no console; in `build.fels`: `app.windowed(
 ## What is there
 
 - **The window:** `open`, `begin_frame`, `end_frame`, `close`, `quit`, `dpi_scale`,
-  `load_font`. The layout of docked panels is kept in the ini file `open` names, or by the
+  `load_font`, `open_file_dialog` and `save_file_dialog` (the file dialogs of Windows). The layout of docked panels is kept in the ini file `open` names, or by the
   program itself with `layout_text`, `layout_changed` and `load_layout`.
 - **The style:** `set_color` (the `COL_*` indexes), `set_rounding`, `set_spacing`,
   `set_borders`, `set_font_scale`, `set_title_bar` (a dark or light title bar in the color of

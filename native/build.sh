@@ -18,7 +18,7 @@ zig c++ -target x86_64-windows-gnu -O2 -shared -std=c++17 -fno-exceptions -fno-r
     "$C/imgui/imgui_widgets.cpp" "$C/imgui/imgui_demo.cpp" \
     "$C/imgui/backends/imgui_impl_win32.cpp" "$C/imgui/backends/imgui_impl_dx11.cpp" \
     "$HERE/fels_app.cpp" \
-    -ld3d11 -ld3dcompiler_47 -ldxgi -lgdi32 -ldwmapi -luser32 -limm32 \
+    -ld3d11 -ld3dcompiler_47 -ldxgi -lgdi32 -ldwmapi -luser32 -limm32 -lcomdlg32 \
     -o "$OUT/cimgui.dll"
 rm -f "$OUT/cimgui.pdb"
 cp "$C/cimgui.h" "$OUT/cimgui.h"

@@ -11,6 +11,7 @@
 #include <d3d11.h>
 #include <windows.h>
 #include <dwmapi.h>
+#include <commdlg.h>
 #include <string.h>
 
 #define FELS_API extern "C" __declspec(dllexport)
@@ -285,3 +286,32 @@ FELS_API int fels_app_layout_changed(void) {
 
 // Scale every text: 1 for the size the font was loaded with.
 FELS_API void fels_app_set_font_scale(float scale) { ImGui::GetStyle().FontScaleMain = scale; }
+
+// The file dialog of Windows, to open a file (`save` 0) or to save one (1). `title` and
+// `filter` are UTF-8; the filter has its parts between `|`: "CSV files|*.csv|All files|*.*".
+// The path chosen goes into `out` (UTF-8, with a NUL); its length, or 0 when the dialog was
+// closed without one (or the path does not fit).
+FELS_API int fels_app_file_dialog(int save, const char* title, const char* filter, char* out, int out_len) {
+    wchar_t wide_title[256];
+    if (::MultiByteToWideChar(CP_UTF8, 0, title, -1, wide_title, 256) == 0) wide_title[0] = 0;
+    wchar_t wide_filter[512];
+    int n = ::MultiByteToWideChar(CP_UTF8, 0, filter, -1, wide_filter, 510);
+    if (n <= 0) { wide_filter[0] = 0; n = 1; }
+    for (int i = 0; i < n; i++) if (wide_filter[i] == L'|') wide_filter[i] = 0;
+    wide_filter[n] = 0;  // the list ends in two NULs
+    wchar_t path[1024] = {};
+    if (out_len > 0 && out[0]) ::MultiByteToWideChar(CP_UTF8, 0, out, -1, path, 1024);
+    OPENFILENAMEW ofn = {};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = g_hwnd;
+    ofn.lpstrFilter = wide_filter;
+    ofn.lpstrFile = path;
+    ofn.nMaxFile = 1024;
+    ofn.lpstrTitle = wide_title;
+    ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | (save ? OFN_OVERWRITEPROMPT : (OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST));
+    BOOL ok = save ? ::GetSaveFileNameW(&ofn) : ::GetOpenFileNameW(&ofn);
+    if (!ok) return 0;
+    int len = ::WideCharToMultiByte(CP_UTF8, 0, path, -1, out, out_len, nullptr, nullptr);
+    if (len <= 0) return 0;
+    return len - 1;
+}

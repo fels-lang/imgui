@@ -11,7 +11,7 @@ DirectX 11 backends and a ready window (`native/fels_app.cpp`):
 | `LICENSE-imgui.txt`, `LICENSE-cimgui.txt` | the MIT licenses of Dear ImGui and cimgui |
 
 The DLL needs only libraries every Windows 10 and 11 has: Direct3D 11, the D3D compiler 47,
-DWM, GDI, User32 and the Universal C Runtime.
+DWM, GDI, User32, the common dialogs and the Universal C Runtime.
 
 ## How it was built
 

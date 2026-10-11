@@ -81,6 +81,25 @@ pub set_borders :: fn(window: f32, frame: f32, tab: f32) { fels_app_set_borders(
 // Scale every text: 1 for the size of `load_font`.
 pub set_font_scale :: fn(scale: f32) { fels_app_set_font_scale(scale); }
 
+// The file dialog of Windows to open a file; the path chosen (in `out`), or null when it was
+// closed without one. `filter` has its parts between `|`: "CSV files|*.csv|All files|*.*".
+pub open_file_dialog :: fn(title: []const u8, filter: []const u8, out: []u8) -> ?[]const u8 {
+    return file_dialog(0, title, filter, out);
+}
+
+// The file dialog of Windows to save a file under a name; `out` may hold a name to start with.
+pub save_file_dialog :: fn(title: []const u8, filter: []const u8, out: []u8) -> ?[]const u8 {
+    return file_dialog(1, title, filter, out);
+}
+
+file_dialog :: fn(save: i32, title: []const u8, filter: []const u8, out: []u8) -> ?[]const u8 {
+    t: [256]u8 = .{};
+    f: [512]u8 = .{};
+    n := fels_app_file_dialog(save, c(title, t[:]), c(filter, f[:]), out.ptr, out.len as i32);
+    if n <= 0 { return null; }
+    return out[0usize..(n as usize)];
+}
+
 // The title bar of the window: dark or light buttons and text, and the color of the bar (on
 // Windows 11), to go with the colors of the panels.
 pub set_title_bar :: fn(dark: bool, color: Vec4) {
@@ -642,6 +661,8 @@ fels_app_load_font :: fn(path: [*]const u8, size: f32) -> i32;
 fels_app_set_color :: fn(idx: i32, r: f32, g: f32, b: f32, a: f32);
 #extern("cimgui", "fels_app_set_title_bar")
 fels_app_set_title_bar :: fn(dark: i32, r: f32, g: f32, b: f32);
+#extern("cimgui", "fels_app_file_dialog")
+fels_app_file_dialog :: fn(save: i32, title: [*]const u8, filter: [*]const u8, out: [*]u8, out_len: i32) -> i32;
 #extern("cimgui", "fels_app_set_font_scale")
 fels_app_set_font_scale :: fn(scale: f32);
 #extern("cimgui", "fels_app_layout_changed")
