@@ -40,9 +40,12 @@ to them. A program with a window has no console; in `build.fels`: `app.windowed(
   program itself with `layout_text`, `layout_changed` and `load_layout`.
 - **The style:** `set_color` (the `COL_*` indexes), `set_rounding`, `set_spacing`,
   `set_borders`, `set_font_scale`, `set_title_bar` (a dark or light title bar in the color of
-  the panels).
+  the panels); `push_color` and `pop_color` for a few items (a button in the accent),
+  `push_font_size` and `pop_font` for larger text.
 - **Panels and layout:** `begin`, `begin_with`, `end`, `dock_space`, `dock_window`,
-  `child_begin`, `same_line`, `separator`, `avail`, `text_size`, ...
+  `child_begin`, `same_line`, `separator`, `spacing`, `avail`, `text_size`, `cursor_x` and
+  `cursor_y`, `align_text_to_frame` (a label on the line of the field beside it), `button_width`
+  and `item_spacing_x` (to put buttons at the right), ...
 - **Layouts:** `layout_begin`, `layout_split` and `layout_end` lay out the dock space anew,
   for a first start or a preset; `dock_window` puts a panel into a part.
 - **Widgets:** `text`, `text_colored`, `text_right` (numbers in a column), `button`,
@@ -50,11 +53,13 @@ to them. A program with a window has no console; in `build.fels`: `app.windowed(
   `MOD_CTRL` and the like), `is_item_hovered`, `is_item_double_clicked`.
 - **Drawing:** `cursor_screen_pos`, `draw_rect` and `draw_line` draw into the current window,
   for bars and markers of your own.
-- **Tabs:** `tab_bar_begin`, `tab_item_begin`, `tab_item_end`, `tab_bar_end`.
+- **Tabs:** `tab_bar_begin`, `tab_item_begin`, `tab_item_end`, `tab_bar_end`; the selected tab
+  has a line in `COL_TAB_SELECTED_OVERLINE` over it.
 - **Menus and popups:** `main_menu_bar_begin`, `menu_begin`, `menu_item`, `menu_toggle`,
   `popup_open`, `popup_modal_begin`, `context_menu_begin` (a right click on the last item).
 - **Tables:** `table_begin` with `TABLE_*` flags (resizable, reorderable, hideable and sortable
-  columns, scrolling), `table_column`, `table_freeze`, `table_headers`, `table_row`,
+  columns, scrolling), `table_column`, `table_column_right` (its header at the right, over
+  numbers), `table_freeze`, `table_headers`, `table_row`, `table_row_color` (a row of sums),
   `table_next_column`, `table_sort_specs`.
 
 ## Plots
@@ -62,7 +67,9 @@ to them. A program with a window has no console; in `build.fels`: `app.windowed(
 `#import imgui.plot;` brings ImPlot: lines, areas, stairs, bars (grouped and stacked), scatter,
 pie charts, heatmaps with a colour scale, lines across a plot, text and tags, on axes that zoom,
 pan and fit, with a legend to hide items, subplots, and date axes (`axis_dates` writes them the
-German way: "15.01.", "Okt 25", "2025"; `axis_time` the way of ImPlot).
+German way: "15.01.", "Okt 25", "2025"; `axis_time` the way of ImPlot). `axis_german` writes the
+numbers of an axis the German way at round steps ("40.000 €", "-0,25 %"), and
+`colormap_scale_german` and `pie_german` do the same for a heatmap's scale and a pie's slices.
 
 ```fels
 if plot::begin("##wealth", -1.0, 280.0, plot::NO_TITLE) {
