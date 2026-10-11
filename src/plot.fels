@@ -300,7 +300,8 @@ pub mouse :: fn() -> Point {
 }
 
 // ImPlot's colours from Dear ImGui's style (call it after changing that), `colors` (at most 32)
-// as the colours of the items one after the other, and dates as 2024-01-15 when `iso`.
+// as the colours of the items one after the other, and dates as 2024-01-15 when `iso`. An axis
+// that fits its items leaves 8 percent of room above and below them.
 pub style :: fn(colors: []const Vec4, iso: bool) {
     n := colors.len;
     if n > 32usize { n = 32usize; }

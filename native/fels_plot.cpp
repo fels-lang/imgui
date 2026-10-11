@@ -346,6 +346,8 @@ FELS_API void fels_plot_style(const ImVec4* colors, int count, int iso) {
     ImPlotStyle& style = ImPlot::GetStyle();
     style.UseISO8601 = iso != 0;
     style.Use24HourClock = true;
+    // room above and below what an axis fits, so that no line or label touches the edge
+    style.FitPadding = ImVec2(0.0f, 0.08f);
     if (count > 0) {
         // colormaps cannot be taken away, so a new one each time (the theme changes seldom)
         char name[32];
