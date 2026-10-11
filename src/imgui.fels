@@ -273,6 +273,13 @@ pub input_text :: fn(label: []const u8, buf: []u8, flags: i32) -> bool {
     return igInputText(c(label, l[:]), buf.ptr, buf.len, flags, 0usize, 0usize);
 }
 
+// A text field like `input_text` that shows `hint` in grey while it is empty.
+pub input_hint :: fn(label: []const u8, hint: []const u8, buf: []u8, flags: i32) -> bool {
+    l: [256]u8 = .{};
+    h: [256]u8 = .{};
+    return igInputTextWithHint(c(label, l[:]), c(hint, h[:]), buf.ptr, buf.len, flags, 0usize, 0usize);
+}
+
 // The text of a field's buffer, up to its NUL.
 pub buffer_text :: fn(buf: []const u8) -> []const u8 {
     n: usize = 0usize;
@@ -718,6 +725,8 @@ igButton :: fn(label: [*]const u8, size: Vec2) -> bool;
 igCheckbox :: fn(label: [*]const u8, value: *bool) -> bool;
 #extern("cimgui", "igSelectable_Bool")
 igSelectable_Bool :: fn(label: [*]const u8, selected: bool, flags: i32, size: Vec2) -> bool;
+#extern("cimgui", "igInputTextWithHint")
+igInputTextWithHint :: fn(label: [*]const u8, hint: [*]const u8, buf: [*]u8, size: usize, flags: i32, callback: usize, user_data: usize) -> bool;
 #extern("cimgui", "igInputText")
 igInputText :: fn(label: [*]const u8, buf: [*]u8, size: usize, flags: i32, callback: usize, user_data: usize) -> bool;
 #extern("cimgui", "igBeginCombo")
