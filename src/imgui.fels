@@ -38,7 +38,8 @@ pub VIEWPORTS :: 2;  // panels can leave the main window
 pub KEYBOARD :: 4;   // the keyboard moves between widgets
 
 // Open the main window, `width` x `height` at 96 dpi. `ini_path` is where the layout of the
-// panels is kept between runs; empty keeps none.
+// panels is kept between runs; empty keeps none, or lets the program keep it with
+// `layout_text`, `layout_changed` and `load_layout`.
 pub open :: fn(title: []const u8, width: i32, height: i32, flags: i32, ini_path: []const u8) -> bool {
     t: [256]u8 = .{};
     ini: [256]u8 = .{};
@@ -135,6 +136,24 @@ pub layout_split :: fn(node: u32, dir: i32, ratio: f32, rest: *u32) -> u32 {
 }
 
 pub layout_end :: fn(node: u32) { igDockBuilderFinish(node); }
+
+// The layout of every panel (where it is docked, its size, the columns of its tables) as the
+// text of an ini file, to keep it elsewhere. Valid until the next call: copy it to keep it.
+pub layout_text :: fn() -> []const u8 {
+    size: usize = 0usize;
+    p := igSaveIniSettingsToMemory(&size);
+    return unsafe core::slice_from_raw_parts(u8, p, size);
+}
+
+// Whether the layout changed since the last call, so that `layout_text` should be kept anew.
+// Only without an ini file (`open` with an empty `ini_path`).
+pub layout_changed :: fn() -> bool { return fels_app_layout_changed() == 1; }
+
+// Take the layout from `text` (from `layout_text`). Before the first `begin_frame`, or between
+// `end_frame` and the next `begin_frame`.
+pub load_layout :: fn(text: []const u8) {
+    igLoadIniSettingsFromMemory(text.ptr, text.len);
+}
 
 // The size of the main window without its menu bar.
 pub work_size :: fn() -> Vec2 {
@@ -544,6 +563,12 @@ fels_app_load_font :: fn(path: [*]const u8, size: f32) -> i32;
 fels_app_set_color :: fn(idx: i32, r: f32, g: f32, b: f32, a: f32);
 #extern("cimgui", "fels_app_set_title_bar")
 fels_app_set_title_bar :: fn(dark: i32, r: f32, g: f32, b: f32);
+#extern("cimgui", "fels_app_layout_changed")
+fels_app_layout_changed :: fn() -> i32;
+#extern("cimgui", "igSaveIniSettingsToMemory")
+igSaveIniSettingsToMemory :: fn(size: *usize) -> [*]const u8;
+#extern("cimgui", "igLoadIniSettingsFromMemory")
+igLoadIniSettingsFromMemory :: fn(data: [*]const u8, size: usize);
 #extern("cimgui", "fels_app_set_rounding")
 fels_app_set_rounding :: fn(window: f32, frame: f32, tab: f32, scrollbar: f32);
 #extern("cimgui", "fels_app_set_spacing")

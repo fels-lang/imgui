@@ -273,3 +273,12 @@ FELS_API void fels_app_set_title_bar(int dark, float r, float g, float b) {
     COLORREF color = RGB((int)(r * 255.0f + 0.5f), (int)(g * 255.0f + 0.5f), (int)(b * 255.0f + 0.5f));
     ::DwmSetWindowAttribute(g_hwnd, 35 /* DWMWA_CAPTION_COLOR */, &color, sizeof(color));
 }
+
+// Whether the layout of the panels changed since the last call, when the program keeps it
+// itself (no ini file): then it saves igSaveIniSettingsToMemory.
+FELS_API int fels_app_layout_changed(void) {
+    ImGuiIO& io = ImGui::GetIO();
+    if (!io.WantSaveIniSettings) return 0;
+    io.WantSaveIniSettings = false;
+    return 1;
+}
